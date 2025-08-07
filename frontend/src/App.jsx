@@ -1,27 +1,24 @@
 // src/App.jsx
 
-import { useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom'; // Import Navigate
 import LoginPage from './pages/LoginPage';
+import SignUpPage from './pages/SignUpPage';
 import DashboardPage from './pages/DashboardPage';
+import ExpensesPage from './pages/ExpensesPage'; // <-- IMPORT NEW PAGE
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
-  // We use a simple state to track if the user is logged in.
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  // This function will be passed to LoginPage to update the state on successful login
-  const handleLoginSuccess = () => {
-    setIsLoggedIn(true);
-  };
-  
   return (
-    <div>
-      {/* Conditionally render the correct page */}
-      {isLoggedIn ? (
-        <DashboardPage />
-      ) : (
-        <LoginPage onLoginSuccess={handleLoginSuccess} />
-      )}
-    </div>
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" />} /> {/* Redirect root to dashboard */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignUpPage />} />
+      
+      {/* Secured Routes */}
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+      <Route path="/expenses" element={<ProtectedRoute><ExpensesPage /></ProtectedRoute>} /> {/* <-- ADD NEW ROUTE */}
+
+    </Routes>
   );
 }
 
