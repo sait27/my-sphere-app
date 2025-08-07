@@ -11,7 +11,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-
+from rest_framework import generics
+from .serializers import ExpenseSerializer
 # --- AI Configuration (No changes here) ---
 try:
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
@@ -26,10 +27,15 @@ class ExpenseAPIView(APIView):
     # This line is the security guard. It ensures only authenticated users can access this view.
     permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        # Get all expenses that belong to the currently logged-in user
+        expenses = Expense.objects.filter(user=request.user).order_by('display_id')
+        # Use the serializer to convert the data to JSON
+        serializer = ExpenseSerializer(expenses, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
     def post(self, request):
-        # The user object is now automatically available from the valid token!
-        user = request.user 
-        
+        user = request.user
         user_text = request.data.get('text')
         if not user_text:
             return Response({'error': 'The "text" field is required.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -74,6 +80,7 @@ class ExpenseAPIView(APIView):
         **User's Text:** "{user_text}"
         **Your JSON Response:**
         """
+        
         try:
             response = GEMINI_MODEL.generate_content(prompt)
             cleaned_json_string = response.text.strip().replace('```json', '').replace('```', '').strip()
@@ -81,32 +88,53 @@ class ExpenseAPIView(APIView):
         except Exception as e:
             return Response({'error': 'Failed to process text with AI.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # --- Save to Database using the REAL logged-in user ---
-        try:
-            expense_list = ai_data.get('expenses', [])
-            if not expense_list:
-                return Response({'error': 'AI did not find any expenses in the text.'}, status=status.HTTP_400_BAD_REQUEST)
+        # --- UPDATED and MORE ROBUST saving logic ---
+        expense_list = ai_data.get('expenses', [])
+        
+        if not expense_list:
+            return Response({'error': 'AI did not find any expenses in the text.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            created_expenses_ids = []
+        created_expenses_ids = []
+        try:
             for expense_data in expense_list:
+                # Use .get() with default values to prevent crashes if a key is missing
                 new_expense = Expense.objects.create(
-                    user=user, # <-- Use the logged-in user from the request
+                    user=user,
                     raw_text=user_text,
                     amount=expense_data.get('amount'),
-                    category=expense_data.get('category'),
-                    vendor=expense_data.get('vendor'),
+                    category=expense_data.get('category', 'Other'), # Default to 'Other'
+                    vendor=expense_data.get('vendor'), # Allows vendor to be missing
                     transaction_date=expense_data.get('transaction_date', datetime.now().strftime('%Y-%m-%d'))
                 )
-                created_expenses_ids.append(new_expense.id)
+                created_expenses_ids.append(new_expense.expense_id)
             
             print(f"✅ User '{user.username}' saved {len(created_expenses_ids)} new expenses.")
 
         except Exception as e:
-            return Response({'error': 'Failed to save expenses to database.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # If saving fails, this will now give us a much more detailed error
+            print(f"🔴 DATABASE SAVE ERROR: {str(e)}")
+            print(f"🔴 PROBLEMATIC AI DATA: {expense_data}")
+            return Response({'error': 'Failed to save expense to database.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        # --- FINAL SUCCESS RESPONSE ---
         return Response({
             'status': 'success',
             'message': f'Successfully saved {len(created_expenses_ids)} expenses for user {user.username}.',
             'created_expense_ids': created_expenses_ids
         }, status=status.HTTP_201_CREATED)
+    
+
+class ExpenseDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    This view handles getting, updating, and deleting a single expense.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = ExpenseSerializer
+    queryset = Expense.objects.all()
+    
+    # This tells the view to use the 'expense_id' field in the URL for lookup,
+    # instead of the default 'pk'.
+    lookup_field = 'expense_id'
+
+    # This is a security measure to ensure users can only affect their own expenses
+    def get_queryset(self):
+        return self.queryset.filter(user=self.request.user)    
