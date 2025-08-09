@@ -11,8 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-import os  # Make sure os is imported
-from dotenv import load_dotenv # <-- ADD THIS LINE
+import os  
+from dotenv import load_dotenv 
 
 load_dotenv()
 
@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'expenses',
+    'budgets',
     'rest_framework',
     'users',
     'corsheaders'

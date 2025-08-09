@@ -4,7 +4,7 @@ from .models import Expense
 import json
 import os
 import google.generativeai as genai
-from datetime import datetime
+from datetime import datetime,timedelta,date
 
 # Import the new tools from Django REST Framework
 from rest_framework.views import APIView
@@ -12,7 +12,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework import generics
+from django.db.models import Sum, DecimalField
 from .serializers import ExpenseSerializer
+from budgets.models import Budget
+
 # --- AI Configuration (No changes here) ---
 try:
     genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
@@ -137,4 +140,43 @@ class ExpenseDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 
     # This is a security measure to ensure users can only affect their own expenses
     def get_queryset(self):
-        return self.queryset.filter(user=self.request.user)    
+        return self.queryset.filter(user=self.request.user)
+
+class ExpenseSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        today = date.today()
+
+        # Calculate start of the week (assuming Monday is the first day)
+        start_of_week = today - timedelta(days=today.weekday())
+
+        # Calculate totals using Django's aggregation features
+        today_sum = Expense.objects.filter(
+            user=user, transaction_date=today
+        ).aggregate(total=Sum('amount', output_field=DecimalField()))['total'] or 0.00
+
+        week_sum = Expense.objects.filter(
+            user=user, transaction_date__gte=start_of_week
+        ).aggregate(total=Sum('amount', output_field=DecimalField()))['total'] or 0.00
+
+        month_sum = Expense.objects.filter(
+            user=user, transaction_date__year=today.year, transaction_date__month=today.month
+        ).aggregate(total=Sum('amount', output_field=DecimalField()))['total'] or 0.00
+
+        current_budget_amount = 0.00
+        try:
+            budget = Budget.objects.get(user=user, year=today.year, month=today.month)
+            current_budget_amount = budget.amount
+        except Budget.DoesNotExist:
+            print(f"No budget found for user {user.username} for the current month.")
+
+        summary_data = {
+            'today': today_sum,
+            'week': week_sum,
+            'month': month_sum,
+            'current_budget': current_budget_amount
+        }
+
+        return Response(summary_data, status=status.HTTP_200_OK)        
