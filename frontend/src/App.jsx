@@ -7,7 +7,7 @@ import DashboardPage from './pages/DashboardPage';
 import ExpensesPage from './pages/ExpensesPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout'; // <-- IMPORT THE NEW LAYOUT
-
+import SettingsPage from './pages/SettingsPage';
 function App() {
   return (
     <Routes>
@@ -27,6 +27,7 @@ function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
+        <Route path="settings" element={<SettingsPage />} />
         {/* We can add more protected routes here later */}
       </Route>
 

@@ -39,6 +39,14 @@ function Layout() {
                 Expenses
               </Link>
             </li>
+            <li className="mb-4">
+            <Link 
+              to="/settings" 
+              className={`block p-3 rounded-lg transition-colors ${isActive('/settings') ? 'bg-cyan-500/20 text-cyan-400 font-bold' : 'hover:bg-slate-700'}`}
+            >
+              Settings
+            </Link>
+          </li>
           </ul>
         </nav>
         <div>
