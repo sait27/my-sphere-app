@@ -1,22 +1,34 @@
 // src/App.jsx
 
-import { Routes, Route, Navigate } from 'react-router-dom'; // Import Navigate
+import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
 import DashboardPage from './pages/DashboardPage';
-import ExpensesPage from './pages/ExpensesPage'; // <-- IMPORT NEW PAGE
+import ExpensesPage from './pages/ExpensesPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import Layout from './components/Layout'; // <-- IMPORT THE NEW LAYOUT
 
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" />} /> {/* Redirect root to dashboard */}
+      {/* Public Routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignUpPage />} />
       
-      {/* Secured Routes */}
-      <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/expenses" element={<ProtectedRoute><ExpensesPage /></ProtectedRoute>} /> {/* <-- ADD NEW ROUTE */}
+      {/* Protected Routes Nested Inside the Layout */}
+      <Route 
+        path="/" 
+        element={
+          <ProtectedRoute>
+            <Layout /> 
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="expenses" element={<ExpensesPage />} />
+        {/* We can add more protected routes here later */}
+      </Route>
 
     </Routes>
   );
