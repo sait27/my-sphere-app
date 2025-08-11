@@ -5,13 +5,18 @@ import apiClient from '../api/axiosConfig';
 function DashboardPage() {
   const [summaryData, setSummaryData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [agenda, setAgenda] = useState(null);
   const userName = "Teja"; // This can be made dynamic later
 
   useEffect(() => {
     const fetchSummaryData = async () => {
       try {
-        const response = await apiClient.get('/expenses/summary/');
-        setSummaryData(response.data);
+        const [summaryRes, agendaRes] = await Promise.all([
+          apiClient.get('/expenses/summary/'),
+          apiClient.get('/lists/agenda/')
+        ]);
+        setSummaryData(summaryRes.data);
+        setAgenda(agendaRes.data);
       } catch (error) {
         console.error("Failed to fetch summary data:", error);
       } finally {
@@ -95,7 +100,27 @@ function DashboardPage() {
                 <Link to="/settings" className="text-cyan-400 hover:underline">Set a budget in Settings to activate</Link>
             )}
         </div>
-        
+        <div className="lg:col-span-2 bg-black/20 backdrop-blur-lg p-6 rounded-lg border border-white/10">
+            <h3 className="font-bold text-lg text-white mb-4">Today's Agenda</h3>
+            {isLoading ? (
+                <p className="text-slate-400">Loading agenda...</p>
+            ) : agenda && agenda.items.length > 0 ? (
+                <div>
+                    <p className="text-sm text-slate-400 mb-2">From your list: <span className="font-bold">{agenda.list_name}</span></p>
+                    <ul className="space-y-2">
+                        {agenda.items.map(item => (
+                            <li key={item.id} className="flex items-center">
+                                <input type="checkbox" className="h-4 w-4 mr-3 bg-slate-700 border-slate-600" />
+                                <span>{item.name}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    <Link to="/lists" className="text-cyan-400 hover:underline text-sm mt-4 block">View all lists &rarr;</Link>
+                </div>
+            ) : (
+                <p className="text-slate-400 mt-2">No upcoming items. You're all caught up!</p>
+            )}
+        </div>
         <div className="lg:col-span-2 bg-black/20 backdrop-blur-lg p-6 rounded-lg border border-white/10">
             <h3 className="font-bold text-lg text-white">AI Insights</h3>
             <p className="text-slate-400 mt-2">Your proactive AI insights will appear here.</p>

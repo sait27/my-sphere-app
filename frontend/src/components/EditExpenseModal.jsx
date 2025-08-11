@@ -1,10 +1,11 @@
 // src/components/EditExpenseModal.jsx
 
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 
 function EditExpenseModal({ isOpen, onClose, expense, onSave }) {
   const [formData, setFormData] = useState({ ...expense });
-
+  const [isSaving, setIsSaving] = useState(false);
   // This useEffect ensures the form updates if a different expense is selected
   useEffect(() => {
     setFormData({ ...expense });
@@ -19,9 +20,18 @@ function EditExpenseModal({ isOpen, onClose, expense, onSave }) {
     setFormData(prevData => ({ ...prevData, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave(formData);
+    setIsSaving(true); // <-- Set saving to true
+    try {
+      await onSave(formData); // The onSave function is async
+      toast.success("Expense updated!");
+      onClose(); // Close the modal on success
+    } catch (error) {
+      toast.error("Failed to update expense.");
+    } finally {
+      setIsSaving(false); // <-- Set saving to false
+    }
   };
 
   return (

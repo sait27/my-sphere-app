@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import apiClient from '../api/axiosConfig';
 import EditExpenseModal from '../components/EditExpenseModal';
 import CategoryPieChart from '../components/CategoryPieChart';
+import toast from 'react-hot-toast';
 
 function ExpensesPage() {
   const [expenses, setExpenses] = useState([]);
@@ -10,6 +11,7 @@ function ExpensesPage() {
   const [sortBy, setSortBy] = useState('date_desc');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentExpense, setCurrentExpense] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchExpenses = async () => {
     try {
@@ -26,25 +28,30 @@ function ExpensesPage() {
 
   const handleExpenseSubmit = async (event) => {
     event.preventDefault();
-    if (!expenseText) return alert('Please enter an expense.');
+    if (!expenseText.trim()) return;
+    setIsSubmitting(true);
     try {
       await apiClient.post('/expenses/', { text: expenseText });
+      toast.success("Expense added successfully!");
       setExpenseText('');
       fetchExpenses();
     } catch (error) {
-      console.error('Failed to add expense:', error);
-      alert('Failed to add expense.');
+      toast.error("Failed to add expense.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
 
   const handleDelete = async (expenseId) => {
     if (window.confirm('Are you sure you want to delete this expense?')) {
       try {
         await apiClient.delete(`/expenses/${expenseId}/`);
+        toast.success("Expense deleted.");
         fetchExpenses();
       } catch (error) {
         console.error('Failed to delete expense:', error);
-        alert('Failed to delete expense.');
+        toast.error("Failed to delete expense.");
       }
     }
   };

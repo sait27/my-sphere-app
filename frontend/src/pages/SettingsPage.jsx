@@ -1,18 +1,17 @@
-// src/pages/SettingsPage.jsx
-
 import { useState, useEffect } from 'react';
 import apiClient from '../api/axiosConfig';
+import toast from 'react-hot-toast'; // <-- 1. IMPORT TOAST
 
 function SettingsPage() {
   const [budget, setBudget] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false); // <-- 2. ADD SAVING STATE
 
-  // This hook runs when the page loads to fetch the current budget, if it exists
   useEffect(() => {
     const fetchCurrentBudget = async () => {
       try {
         const response = await apiClient.get('/budgets/current/');
-        setBudget(response.data.amount); // Pre-fill the form with the existing budget
+        setBudget(response.data.amount);
       } catch (error) {
         if (error.response && error.response.status === 404) {
           console.log("No budget set for this month yet.");
@@ -23,25 +22,27 @@ function SettingsPage() {
         setIsLoading(false);
       }
     };
-
     fetchCurrentBudget();
   }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!budget || parseFloat(budget) <= 0) {
-      alert('Please enter a valid budget amount.');
+      toast.error('Please enter a valid budget amount.'); // <-- USE TOAST
       return;
     }
-
+    
+    setIsSaving(true); // <-- 3. SET SAVING TO TRUE
     try {
       await apiClient.post('/budgets/current/', {
         amount: budget
       });
-      alert('Budget saved successfully!');
+      toast.success('Budget saved successfully!'); // <-- USE TOAST
     } catch (error) {
       console.error('Failed to save budget:', error);
-      alert('Failed to save budget. Please try again.');
+      toast.error('Failed to save budget. Please try again.'); // <-- USE TOAST
+    } finally {
+      setIsSaving(false); // <-- 4. SET SAVING TO FALSE
     }
   };
 
@@ -73,11 +74,13 @@ function SettingsPage() {
               placeholder="e.g., 50000"
               className="flex-1 px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-white"
             />
+            {/* --- 5. UPDATED BUTTON --- */}
             <button
               type="submit"
-              className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg"
+              disabled={isSaving}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed"
             >
-              Save Budget
+              {isSaving ? 'Saving...' : 'Save Budget'}
             </button>
           </div>
         </form>

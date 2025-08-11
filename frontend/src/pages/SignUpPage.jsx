@@ -2,27 +2,32 @@
 
 import { useState } from 'react';
 import apiClient from '../api/axiosConfig';
-import { Link, useNavigate } from 'react-router-dom'; // Import Link and useNavigate
+import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast'; // Import Link and useNavigate
 
 function SignUpPage() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate(); // Hook for navigation
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setIsLoading(true);
     try {
       await apiClient.post('http://127.0.0.1:8000/api/v1/users/register/', {
         username,
         email,
         password,
       });
-      alert('Registration successful! Please log in.');
+      toast.success('Registration successful! Please log in.');
       navigate('/login'); // Redirect to login page on success
     } catch (error) {
       console.error('Registration failed:', error.response ? error.response.data : error.message);
-      alert('Registration Failed. Please try again.');
+      toast.error('Registration Failed. Please try again.');
+    }finally {
+      setIsLoading(false);
     }
   };
 
@@ -48,8 +53,12 @@ function SignUpPage() {
             <label htmlFor="password" className="block text-slate-400 text-sm font-bold mb-2">Password</label>
             <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-white" />
           </div>
-          <button type="submit" className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-lg focus:shadow-cyan-500/50 transition-all duration-300">
-            Create Account
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-lg focus:shadow-cyan-500/50 transition-all duration-300 disabled:bg-slate-600 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
         <p className="text-center text-slate-400 text-sm mt-6">

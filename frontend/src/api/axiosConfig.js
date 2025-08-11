@@ -1,43 +1,60 @@
-// src/api/axiosConfig.js
-
 import axios from 'axios';
 
 const apiClient = axios.create({
   baseURL: 'http://127.0.0.1:8000/api/v1',
 });
 
-// --- NEW: Request Interceptor ---
-// This runs BEFORE every single request is sent.
+// Request Interceptor: Attaches the token to every request
 apiClient.interceptors.request.use(
   (config) => {
-    // Get the token from localStorage
     const token = localStorage.getItem('access_token');
-    // If the token exists, add it to the Authorization header
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    // For request errors, just reject the promise
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// --- Response Interceptor (for handling expired tokens) ---
-// This runs AFTER a response is received.
+// Response Interceptor: Handles expired tokens and refreshes them
 apiClient.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      // This part handles automatic logout if the token is bad
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      delete apiClient.defaults.headers.common['Authorization'];
-      window.location.href = '/login';
+  (response) => response, // Simply return the successful response
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // Check if the error is a 401 and it's not a retry request
+    if (error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true; // Mark it as a retry
+      
+      const refreshToken = localStorage.getItem('refresh_token');
+      
+      if (refreshToken) {
+        try {
+          // Attempt to get a new access token using the refresh token
+          const response = await axios.post('http://127.0.0.1:8000/api/v1/users/login/refresh/', {
+            refresh: refreshToken,
+          });
+          
+          const newAccessToken = response.data.access;
+          localStorage.setItem('access_token', newAccessToken);
+          
+          // Update the header for the original failed request
+          originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+          
+          // Retry the original request with the new token
+          return apiClient(originalRequest);
+
+        } catch (refreshError) {
+          // If the refresh token is also invalid, log the user out
+          console.error("Refresh token is invalid, logging out.", refreshError);
+          localStorage.clear();
+          window.location.href = '/login';
+          return Promise.reject(refreshError);
+        }
+      }
     }
+    
+    // For any other errors, just reject the promise
     return Promise.reject(error);
   }
 );

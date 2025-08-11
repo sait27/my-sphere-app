@@ -6,10 +6,24 @@ import SignUpPage from './pages/SignUpPage';
 import DashboardPage from './pages/DashboardPage';
 import ExpensesPage from './pages/ExpensesPage';
 import ProtectedRoute from './components/ProtectedRoute';
-import Layout from './components/Layout'; // <-- IMPORT THE NEW LAYOUT
+import Layout from './components/Layout'; 
 import SettingsPage from './pages/SettingsPage';
+import ListsPage from './pages/ListsPage';
+import { Toaster } from 'react-hot-toast'; 
+
 function App() {
   return (
+    <>  
+      <Toaster 
+        position="top-center"
+        reverseOrder={false}
+        toastOptions={{
+          style: {
+            background: '#334155', // slate-700
+            color: '#fff',
+          },
+        }}
+      />
     <Routes>
       {/* Public Routes */}
       <Route path="/login" element={<LoginPage />} />
@@ -28,10 +42,12 @@ function App() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="lists" element={<ListsPage />} /> {/* <-- ADD NEW LISTS ROUTE */}
         {/* We can add more protected routes here later */}
       </Route>
 
     </Routes>
+    </>
   );
 }
 
