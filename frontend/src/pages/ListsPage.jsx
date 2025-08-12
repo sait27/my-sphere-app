@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../api/axiosConfig';
 import toast from 'react-hot-toast';
+import EmptyState from '../components/EmptyState'; // <-- 1. IMPORT EMPTY STATE
+import { ListChecks } from 'lucide-react';
+import ConfirmModal from '../components/ConfirmModal';
 
 // Helper component for each row in the LEFT panel (List of Lists)
 function ListRow({ list, onSelect, isSelected, onUpdate, onDelete }) {
@@ -93,6 +96,7 @@ function ListsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingList, setIsCreatingList] = useState(false);
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(null);
 
   // --- Data Fetching ---
   const fetchLists = async () => {
@@ -173,17 +177,8 @@ function ListsPage() {
     }
   };
 
-  const handleDeleteItem = async (itemId) => {
-    if (window.confirm('Are you sure you want to delete this item?')) {
-      try {
-        await apiClient.delete(`/lists/items/${itemId}/`);
-        const updatedItems = selectedList.items.filter(i => i.id !== itemId);
-        setSelectedList({...selectedList, items: updatedItems});
-        toast.success("Item deleted.");
-      } catch (error) {
-        toast.error("Failed to delete item.");
-      }
-    }
+  const handleDeleteItemRequest = async (itemId) => {
+    setConfirmingDelete({ type: 'item', id: itemId });
   };
 
    const handleUpdateList = async (listId, updatedData) => {
@@ -192,16 +187,32 @@ function ListsPage() {
     fetchLists();
   };
 
-  const handleDeleteList = async (listId, listName) => {
-    if (window.confirm(`Are you sure you want to delete the list "${listName}"?`)) {
-      try {
-        await apiClient.delete(`/lists/${listId}/`);
-        toast.success(`List "${listName}" deleted.`);
+  const handleDeleteListRequest = (listId, listName) => {
+    setConfirmingDelete({ type: 'list', id: listId, name: listName });
+  };
+  
+  // --- NEW: This function runs when the user clicks "Confirm" ---
+  const handleConfirmDelete = async () => {
+    if (!confirmingDelete) return;
+
+    const { type, id, name } = confirmingDelete;
+    
+    try {
+      if (type === 'list') {
+        await apiClient.delete(`/lists/${id}/`);
+        toast.success(`List "${name}" deleted.`);
         fetchLists();
-        if (selectedList?.id === listId) setSelectedList(null);
-      } catch (error) {
-        toast.error("Failed to delete list.");
+        if (selectedList?.id === id) setSelectedList(null);
+      } else if (type === 'item') {
+        await apiClient.delete(`/lists/items/${id}/`);
+        toast.success("Item deleted.");
+        fetchListDetails(selectedList.id); // Refresh the items in the current list
       }
+    } catch (error) {
+      toast.error(`Failed to delete ${type}.`);
+      console.error(`Failed to delete ${type}:`, error);
+    } finally {
+      setConfirmingDelete(null); // Close the modal
     }
   };
 
@@ -217,16 +228,27 @@ function ListsPage() {
             <button type="submit" className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold p-2 rounded-lg">+</button>
           </form>
           <div className="overflow-y-auto space-y-2 mt-4 pr-2">
-            {isLoading ? <p>Loading...</p> : lists.map(list => (
-              <ListRow 
-                key={list.id}
-                list={list}
-                onSelect={handleSelectList}
-                isSelected={selectedList?.id === list.id}
-                onUpdate={handleUpdateList}
-                onDelete={handleDeleteList}
+            {isLoading ? (
+              <p>Loading...</p>
+            ) : lists.length > 0 ? (
+              lists.map(list => (
+                <ListRow 
+                  key={list.id}
+                  list={list}
+                  onSelect={handleSelectList}
+                  isSelected={selectedList?.id === list.id}
+                  onUpdate={handleUpdateList}
+                  onDelete={handleDeleteListRequest}
+                />
+              ))
+            ) : (
+              // --- 3. USE THE EMPTY STATE COMPONENT ---
+              <EmptyState 
+                icon={ListChecks}
+                title="No Lists Yet"
+                message="Create your first list using the form above."
               />
-            ))}
+            )}
           </div>
         </div>
 
@@ -249,7 +271,7 @@ function ListsPage() {
                         {item.quantity && <span className={`text-slate-400 text-sm ml-2 ${item.is_completed ? 'line-through' : ''}`}>({item.quantity})</span>}
                       </div>
                     </div>
-                    <button onClick={() => handleDeleteItem(item.id)} className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-full" title="Delete Item">
+                    <button onClick={() => handleDeleteItemRequest(item.id)} className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-full" title="Delete Item">
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                     </button>
                   </li>
@@ -258,11 +280,22 @@ function ListsPage() {
             </>
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-slate-400">Select a list to view its items, or create a new one.</p>
+              <EmptyState 
+                icon={ListChecks}
+                title="Select a List"
+                message="Select a list on the left to view its items, or create a new one."
+              />
             </div>
           )}
         </div>
       </div>
+      <ConfirmModal
+        isOpen={!!confirmingDelete}
+        onClose={() => setConfirmingDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title={`Delete ${confirmingDelete?.type || ''}`}
+        message={`Are you sure you want to permanently delete this ${confirmingDelete?.type}? This action cannot be undone.`}
+      />
     </>
   );
 }

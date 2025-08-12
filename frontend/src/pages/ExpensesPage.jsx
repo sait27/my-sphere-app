@@ -3,6 +3,9 @@ import apiClient from '../api/axiosConfig';
 import EditExpenseModal from '../components/EditExpenseModal';
 import CategoryPieChart from '../components/CategoryPieChart';
 import toast from 'react-hot-toast';
+import { Wallet } from 'lucide-react';
+import EmptyState from '../components/EmptyState';
+import ConfirmModal from '../components/ConfirmModal';
 
 function ExpensesPage() {
   const [expenses, setExpenses] = useState([]);
@@ -12,6 +15,8 @@ function ExpensesPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentExpense, setCurrentExpense] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [deletingExpenseId, setDeletingExpenseId] = useState(null);
 
   const fetchExpenses = async () => {
     try {
@@ -43,29 +48,30 @@ function ExpensesPage() {
   };
 
 
-  const handleDelete = async (expenseId) => {
-    if (window.confirm('Are you sure you want to delete this expense?')) {
-      try {
-        await apiClient.delete(`/expenses/${expenseId}/`);
-        toast.success("Expense deleted.");
-        fetchExpenses();
-      } catch (error) {
-        console.error('Failed to delete expense:', error);
-        toast.error("Failed to delete expense.");
-      }
-    }
-  };
+  const handleDeleteRequest = (expenseId) => {
+  // This function just prepares for the deletion by opening the modal
+  setDeletingExpenseId(expenseId);
+  setShowConfirmModal(true);
+};
+
+const confirmDelete = async () => {
+  // This function runs when the user clicks "Confirm" in the modal
+  try {
+    await apiClient.delete(`/expenses/${deletingExpenseId}/`);
+    toast.success("Expense deleted.");
+    fetchExpenses(); // Refresh the list
+  } catch (error) {
+    toast.error("Failed to delete expense.");
+  } finally {
+    // Clean up and close the modal
+    setShowConfirmModal(false);
+    setDeletingExpenseId(null);
+  }
+};
 
   const handleUpdateExpense = async (updatedExpenseData) => {
-    try {
-      await apiClient.put(`/expenses/${updatedExpenseData.expense_id}/`, updatedExpenseData);
-      alert('Expense updated successfully!');
-      setIsEditModalOpen(false);
-      fetchExpenses();
-    } catch (error) {
-      console.error('Failed to update expense:', error);
-      alert('Failed to update expense.');
-    }
+    await apiClient.put(`/expenses/${updatedExpenseData.expense_id}/`, updatedExpenseData);
+    fetchExpenses();
   };
 
   const handleOpenEditModal = (expense) => {
@@ -139,31 +145,41 @@ function ExpensesPage() {
       </div>
 
       <div className="bg-black/20 backdrop-blur-lg p-6 rounded-lg border border-white/10">
-        <ul>
-          {filteredAndSortedExpenses.map(expense => (
-            <li key={expense.expense_id} className="flex justify-between items-center py-3 border-b border-slate-700 last:border-b-0">
-              <div className="flex items-center">
-                <span className="mr-4 text-slate-500 font-mono text-sm">{expense.display_id}</span>
-                <div>
-                  <p className="font-semibold text-white">{expense.vendor || expense.category}</p>
-                  <p className="text-sm text-slate-400">{expense.raw_text}</p>
+        {/* This is the new conditional check */}
+        {filteredAndSortedExpenses.length > 0 ? (
+          <ul>
+            {filteredAndSortedExpenses.map(expense => (
+              <li key={expense.expense_id} className="flex justify-between items-center py-3 border-b border-slate-700 last:border-b-0">
+                {/* ... all your existing list item code ... */}
+                <div className="flex items-center">
+                  <span className="mr-4 text-slate-500 font-mono text-sm">{expense.display_id}</span>
+                  <div>
+                    <p className="font-semibold text-white">{expense.vendor || expense.category}</p>
+                    <p className="text-sm text-slate-400">{expense.raw_text}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center">
-                <div className="text-right mr-2">
-                  <p className="font-bold text-lg text-white">₹{parseFloat(expense.amount).toFixed(2)}</p>
-                  <p className="text-xs text-slate-400">{expense.transaction_date}</p>
+                <div className="flex items-center">
+                  <div className="text-right mr-2">
+                    <p className="font-bold text-lg text-white">₹{parseFloat(expense.amount).toFixed(2)}</p>
+                    <p className="text-xs text-slate-400">{expense.transaction_date}</p>
+                  </div>
+                  <button onClick={() => handleOpenEditModal(expense)} className="p-2 text-slate-500 hover:text-cyan-500 hover:bg-cyan-500/10 rounded-full" title="Edit Expense">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                  </button>
+                  <button onClick={() => handleDeleteRequest(expense.expense_id)} className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-full" title="Delete Expense">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                  </button>
                 </div>
-                <button onClick={() => handleOpenEditModal(expense)} className="p-2 text-slate-500 hover:text-cyan-500 hover:bg-cyan-500/10 rounded-full" title="Edit Expense">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                </button>
-                <button onClick={() => handleDelete(expense.expense_id)} className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-full" title="Delete Expense">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState 
+            icon={Wallet}
+            title="No Expenses Found"
+            message="Get started by logging your first transaction using the form above."
+          />
+        )}
       </div>
 
       <EditExpenseModal
@@ -171,6 +187,14 @@ function ExpensesPage() {
         onClose={handleCloseEditModal}
         onSave={handleUpdateExpense}
         expense={currentExpense}
+      />
+
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={confirmDelete}
+        title="Delete Expense"
+        message="Are you sure you want to permanently delete this expense? This action cannot be undone."
       />
     </>
   );
