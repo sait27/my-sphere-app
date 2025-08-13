@@ -6,7 +6,7 @@ from .models import ListItem, List
 class ListItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = ListItem
-        fields = ['id', 'name', 'quantity', 'is_completed']
+        fields = ['id', 'name', 'quantity', 'is_completed', 'price']
 
 class ListSerializer(serializers.ModelSerializer):
     # This nests the item details within the list's API response

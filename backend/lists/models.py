@@ -41,6 +41,7 @@ class ListItem(models.Model):
     name = models.CharField(max_length=200)
     quantity = models.CharField(max_length=50, blank=True, null=True)
     is_completed = models.BooleanField(default=False)
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
