@@ -44,7 +44,9 @@ INSTALLED_APPS = [
     'expenses',
     'budgets',
     'lists',
+    'todos',
     'rest_framework',
+    'integrations',
     'users',
     'corsheaders'
 ]
@@ -138,7 +140,22 @@ REST_FRAMEWORK = {
     )
 }
 
+# JWT Configuration
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # Increased from default 5 minutes
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),     # 7 days refresh token
+    'ROTATE_REFRESH_TOKENS': True,                   # Generate new refresh token on use
+    'BLACKLIST_AFTER_ROTATION': True,               # Blacklist old refresh tokens
+}
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# AI Configuration
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')

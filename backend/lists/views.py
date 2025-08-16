@@ -5,12 +5,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
-from .models import List, ListItem
-from .serializers import ListSerializer, ListItemSerializer
+from django.db import models
+from .models import List, ListItem, ListTemplate
+from .serializers import ListSerializer, ListItemSerializer, ListTemplateSerializer
 
 import os
 import google.generativeai as genai
 import json
+from django.utils import timezone
 
 # --- ViewSet for Managing Lists (Create, Read, Update, Delete) ---
 class ListViewSet(viewsets.ModelViewSet):
@@ -121,3 +123,131 @@ class AgendaView(APIView):
         except List.DoesNotExist:
             # If the user has no lists, return an empty state
             return Response({'list_name': None, 'items': []})
+
+
+# --- Analytics View ---
+class ListAnalyticsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        period = request.query_params.get('period', 'month')
+        
+        # Get user's lists
+        user_lists = List.objects.filter(user=user)
+        total_lists = user_lists.count()
+        active_lists = user_lists.filter(is_archived=False).count()
+        
+        # Get user's items
+        user_items = ListItem.objects.filter(list__user=user)
+        total_items = user_items.count()
+        completed_items = user_items.filter(is_completed=True).count()
+        
+        # Calculate completion rate
+        completion_rate = (completed_items / total_items * 100) if total_items > 0 else 0
+        
+        # Category breakdown
+        category_data = {}
+        for list_obj in user_lists:
+            list_type = list_obj.list_type or 'other'
+            category_data[list_type] = category_data.get(list_type, 0) + 1
+        
+        # Mock insights for now
+        insights = [
+            {
+                'title': 'Productivity Insight',
+                'description': f'You have completed {completed_items} out of {total_items} items',
+                'type': 'success'
+            },
+            {
+                'title': 'List Management',
+                'description': f'You have {active_lists} active lists to focus on',
+                'type': 'info'
+            }
+        ]
+        
+        return Response({
+            'total_lists': total_lists,
+            'active_lists': active_lists,
+            'completed_lists': total_lists - active_lists,
+            'total_items': total_items,
+            'completed_items': completed_items,
+            'completion_rate': round(completion_rate, 1),
+            'productivity_score': min(100, round(completion_rate * 1.2, 1)),
+            'category_breakdown': category_data,
+            'insights': insights,
+            'period': period
+        })
+
+
+# --- Simple Template View ---
+class ListTemplateViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ListTemplateSerializer
+
+    def get_queryset(self):
+        # Return mock templates for now - in production this would query the database
+        return ListTemplate.objects.none()  # Empty queryset since we're using mock data
+
+    def list(self, request):
+        # Return mock templates for now
+        mock_templates = [
+            {
+                'id': 1,
+                'name': 'Weekly Groceries',
+                'description': 'Essential items for weekly grocery shopping',
+                'category': 'shopping',
+                'is_public': True,
+                'use_count': 45,
+                'user_name': 'System',
+                'created_at': '2024-01-15T10:00:00Z'
+            },
+            {
+                'id': 2,
+                'name': 'Daily Tasks',
+                'description': 'Common daily tasks and reminders',
+                'category': 'todo',
+                'is_public': True,
+                'use_count': 32,
+                'user_name': 'System',
+                'created_at': '2024-01-10T10:00:00Z'
+            },
+            {
+                'id': 3,
+                'name': 'Travel Packing',
+                'description': 'Essential items for travel packing',
+                'category': 'packing',
+                'is_public': True,
+                'use_count': 28,
+                'user_name': 'System',
+                'created_at': '2024-01-05T10:00:00Z'
+            }
+        ]
+        
+        return Response({
+            'results': mock_templates,
+            'count': len(mock_templates)
+        })
+
+    def create(self, request):
+        # Create a new template (simplified)
+        name = request.data.get('name', '')
+        description = request.data.get('description', '')
+        category = request.data.get('category', 'general')
+        
+        if not name:
+            return Response({'error': 'Name is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Return mock created template
+        new_template = {
+            'id': 999,
+            'name': name,
+            'description': description,
+            'category': category,
+            'is_public': False,
+            'use_count': 0,
+            'user_name': request.user.username,
+            'created_at': timezone.now().isoformat()
+        }
+        
+        return Response(new_template, status=status.HTTP_201_CREATED)
