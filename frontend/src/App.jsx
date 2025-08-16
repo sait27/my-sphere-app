@@ -1,14 +1,15 @@
 // src/App.jsx
 
 import { Routes, Route, Navigate } from 'react-router-dom';
+import ExpensesPage from './pages/ExpensesPage';
+import ListsPageEnhanced from './pages/ListsPageEnhanced';
+import DashboardPage from './pages/DashboardPage';
+import SettingsPage from './pages/SettingsPage';
+import TodosPage from './pages/TodosPage';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
-import DashboardPage from './pages/DashboardPage';
-import ExpensesPage from './pages/ExpensesPage';
-import ProtectedRoute from './components/ProtectedRoute';
-import Layout from './components/Layout'; 
-import SettingsPage from './pages/SettingsPage';
-import ListsPage from './pages/ListsPage';
+import ProtectedRoute from './components/common/ProtectedRoute';
+import Layout from './components/common/Layout'; 
 import { Toaster } from 'react-hot-toast'; 
 
 function App() {
@@ -41,10 +42,14 @@ function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
+        <Route path="lists" element={<ListsPageEnhanced />} />
+        <Route path="todos" element={<TodosPage />} />
         <Route path="settings" element={<SettingsPage />} />
-        <Route path="lists" element={<ListsPage />} /> {/* <-- ADD NEW LISTS ROUTE */}
         {/* We can add more protected routes here later */}
       </Route>
+      
+      {/* Catch all route for 404 */}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
 
     </Routes>
     </>

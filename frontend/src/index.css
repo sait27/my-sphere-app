@@ -1,18 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Add this to the end of src/index.css */
+/* Enhanced Global Styles */
+* {
+  scroll-behavior: smooth;
+}
 
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Enhanced Animations */
 @keyframes gradient-xy {
     0%, 100% {
         background-size: 400% 400%;
-        background-position: top center;
+        background-position: left center;
     }
     50% {
         background-size: 200% 200%;
-        background-position: bottom center;
+        background-position: right center;
     }
 }
 
@@ -20,28 +48,78 @@
     animation: gradient-xy 15s ease infinite;
 }
 
-@keyframes gradient-xy {
+@keyframes float {
     0%, 100% {
-        background-size: 400% 400%;
-        background-position: top center;
+        transform: translateY(0px);
     }
     50% {
-        background-size: 200% 200%;
-        background-position: bottom center;
+        transform: translateY(-10px);
     }
 }
 
-.animate-gradient-xy {
-    animation: gradient-xy 15s ease infinite;
+.animate-float {
+    animation: float 6s ease-in-out infinite;
 }
 
-/* --- The Shooting Stars Animation --- */
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 40px rgba(6, 182, 212, 0.6);
+    }
+}
+
+.animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-slide-up {
+    animation: slide-up 0.6s ease-out;
+}
+
+@keyframes scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.5s ease-out forwards;
+}
+
+
+/* Enhanced Shooting Stars */
 @keyframes shooting-star-anim {
     0% {
-        transform: translateY(-100vh) translateX(0) scale(0.5);
+        transform: translateY(-100vh) translateX(-50px) scale(0.5);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
     }
     100% {
-        transform: translateY(100vh) translateX(200vw) scale(1);
+        transform: translateY(100vh) translateX(150px) scale(1);
+        opacity: 0;
     }
 }
 

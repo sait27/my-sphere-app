@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api/v1',
+  baseURL: 'http://localhost:8000/api/v1',
 });
 
 // Request Interceptor: Attaches the token to every request
@@ -31,7 +31,7 @@ apiClient.interceptors.response.use(
       if (refreshToken) {
         try {
           // Attempt to get a new access token using the refresh token
-          const response = await axios.post('http://127.0.0.1:8000/api/v1/users/login/refresh/', {
+          const response = await axios.post('http://localhost:8000/api/v1/users/login/refresh/', {
             refresh: refreshToken,
           });
           
@@ -46,7 +46,7 @@ apiClient.interceptors.response.use(
 
         } catch (refreshError) {
           // If the refresh token is also invalid, log the user out
-          console.error("Refresh token is invalid, logging out.", refreshError);
+          // Refresh token is invalid, logging out
           localStorage.clear();
           window.location.href = '/login';
           return Promise.reject(refreshError);
