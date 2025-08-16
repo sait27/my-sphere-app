@@ -26,6 +26,32 @@ class ListViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Automatically assign the logged-in user when a new list is created
         serializer.save(user=self.request.user)
+    
+    def create_item(self, request, pk=None):
+        """Create a new item in the specified list"""
+        try:
+            list_obj = self.get_object()
+            serializer = ListItemSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save(list=list_obj)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def export(self, request):
+        """Export lists in various formats"""
+        list_ids = request.data.get('list_ids', [])
+        format_type = request.data.get('format', 'csv')
+        
+        if not list_ids:
+            return Response({'error': 'list_ids required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # For now, return a simple response - implement actual export logic later
+        return Response({
+            'message': f'Export initiated for {len(list_ids)} lists in {format_type} format',
+            'download_url': '/api/v1/lists/download/export.csv'
+        }, status=status.HTTP_200_OK)
 
 # --- Special View for AI-powered "Smart Add" ---
 class SmartAddItemView(APIView):
