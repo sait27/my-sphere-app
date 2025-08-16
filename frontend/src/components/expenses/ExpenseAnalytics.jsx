@@ -64,7 +64,7 @@ const ExpenseAnalytics = () => {
       </div>
 
       {/* Enhanced Summary Cards */}
-      {analytics && (
+      {analytics && analytics.summary && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 p-6 rounded-xl border border-green-500/20 hover:border-green-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-green-500/10">
             <div className="flex items-center justify-between">
@@ -132,8 +132,7 @@ const ExpenseAnalytics = () => {
         </div>
       )}
 
-      {/* Enhanced Category Breakdown */}
-      {analytics && analytics.category_breakdown.length > 0 && (
+      {analytics && analytics.category_insights && analytics.category_insights.category_breakdown.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Category List */}
           <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-xl border border-slate-700">
@@ -142,8 +141,8 @@ const ExpenseAnalytics = () => {
               Top Categories
             </h3>
             <div className="space-y-4">
-              {analytics.category_breakdown.slice(0, 6).map((category, index) => {
-                const percentage = (category.total / analytics.summary.total_amount * 100);
+            {analytics?.category_insights?.category_breakdown?.slice(0, 6).map((category, index) => {
+                const percentage = (category.total_spent / analytics.summary.total_amount * 100);
                 return (
                   <div key={category.category} className="group hover:bg-slate-700/30 p-3 rounded-lg transition-all duration-200">
                     <div className="flex items-center justify-between mb-2">
@@ -155,7 +154,7 @@ const ExpenseAnalytics = () => {
                         <span className="text-slate-200 font-medium">{category.category}</span>
                       </div>
                       <div className="text-right">
-                        <p className="text-white font-bold">₹{category.total.toLocaleString('en-IN')}</p>
+                        <p className="text-white font-bold">₹{category.total_spent.toLocaleString('en-IN')}</p>
                         <p className="text-slate-400 text-xs">{category.count} transactions</p>
                       </div>
                     </div>
@@ -182,9 +181,9 @@ const ExpenseAnalytics = () => {
               Spending Insights
             </h3>
             <div className="space-y-4">
-              {analytics.category_breakdown.slice(0, 3).map((category, index) => {
+            {analytics?.category_breakdown?.slice(0, 3).map((category, index) => {
                 const isHighest = index === 0;
-                const percentage = (category.total / analytics.summary.total_amount * 100);
+                const percentage = (category.total_spent / analytics.summary.total_amount * 100);
                 return (
                   <div key={category.category} className={`p-4 rounded-lg ${isHighest ? 'bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-500/30' : 'bg-slate-700/30'}`}>
                     <div className="flex items-center justify-between mb-2">
@@ -198,7 +197,7 @@ const ExpenseAnalytics = () => {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-white font-bold text-lg">{category.category}</span>
-                      <span className="text-white font-bold">₹{category.total.toLocaleString('en-IN')}</span>
+                      <p className="text-white font-bold">₹{category.total_spent.toLocaleString('en-IN')}</p>
                     </div>
                     <p className="text-xs text-slate-400 mt-1">{category.count} transactions</p>
                   </div>
@@ -231,11 +230,11 @@ const ExpenseAnalytics = () => {
       )}
 
       {/* Payment Methods */}
-      {analytics && analytics.payment_method_breakdown.length > 0 && (
+      {analytics && analytics.payment_method_breakdown && analytics.payment_method_breakdown.length > 0 && (
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-xl border border-slate-700">
           <h3 className="text-xl font-semibold text-white mb-4">Payment Methods</h3>
           <div className="space-y-3">
-            {analytics.payment_method_breakdown.map((method, index) => (
+            {analytics?.payment_method_breakdown?.map((method, index) => (
               <div key={method.payment_method} className="flex items-center justify-between">
                 <span className="text-slate-300 capitalize">{method.payment_method.replace('_', ' ')}</span>
                 <div className="flex items-center space-x-3">
@@ -243,12 +242,12 @@ const ExpenseAnalytics = () => {
                     <div 
                       className="h-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500"
                       style={{ 
-                        width: `${(method.total / analytics.summary.total_amount) * 100}%` 
+                        width: `${(method.total_spent / analytics.summary.total_amount) * 100}%` 
                       }}
                     ></div>
                   </div>
                   <span className="text-white font-semibold w-20 text-right">
-                    ₹{method.total.toFixed(2)}
+                    ₹{method.total_spent.toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -258,66 +257,71 @@ const ExpenseAnalytics = () => {
       )}
 
       {/* Budget Analysis */}
-      {budgetAnalysis && budgetAnalysis.budget_analysis.length > 0 && (
+      {budgetAnalysis?.budget_analysis && (
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-xl border border-slate-700">
           <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
             <Target className="mr-2" size={20} />
             Budget Analysis
           </h3>
           <div className="space-y-4">
-            {budgetAnalysis.budget_analysis.map((budget) => (
-              <div key={budget.category} className="p-4 bg-slate-700/30 rounded-lg">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-slate-300 font-medium">{budget.category}</span>
-                  <span className={`text-sm font-semibold ${
-                    budget.is_over_budget ? 'text-red-400' : 'text-green-400'
-                  }`}>
-                    {budget.percentage_used.toFixed(1)}% used
-                  </span>
+          {budgetAnalysis.budget_analysis.length > 0 ? (
+            <div className="space-y-4">
+              {budgetAnalysis.budget_analysis.map((budget) => (
+                <div key={budget.category} className="p-4 bg-slate-700/30 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-slate-300 font-medium">{budget.category}</span>
+                    <span className={`text-sm font-semibold ${
+                      budget.is_over_budget ? 'text-red-400' : 'text-green-400'
+                    }`}>
+                      {budget.percentage_used.toFixed(1)}% used
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-600 rounded-full h-3 mb-2">
+                    <div 
+                      className={`h-3 rounded-full ${
+                        budget.is_over_budget 
+                          ? 'bg-gradient-to-r from-red-500 to-red-600' 
+                          : 'bg-gradient-to-r from-green-500 to-green-600'
+                      }`}
+                      style={{ width: `${Math.min(budget.percentage_used, 100)}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">
+                      Spent: ₹{budget.spent.toFixed(2)}
+                    </span>
+                    <span className="text-slate-400">
+                      Budget: ₹{budget.budget_limit.toFixed(2)}
+                    </span>
+                  </div>
+                  {budget.remaining < 0 && (
+                    <p className="text-red-400 text-sm mt-1">
+                      Over budget by ₹{Math.abs(budget.remaining).toFixed(2)}
+                    </p>
+                  )}
                 </div>
-                <div className="w-full bg-slate-600 rounded-full h-3 mb-2">
-                  <div 
-                    className={`h-3 rounded-full ${
-                      budget.is_over_budget 
-                        ? 'bg-gradient-to-r from-red-500 to-red-600' 
-                        : 'bg-gradient-to-r from-green-500 to-green-600'
-                    }`}
-                    style={{ width: `${Math.min(budget.percentage_used, 100)}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">
-                    Spent: ₹{budget.spent.toFixed(2)}
-                  </span>
-                  <span className="text-slate-400">
-                    Budget: ₹{budget.budget_limit.toFixed(2)}
-                  </span>
-                </div>
-                {budget.remaining < 0 && (
-                  <p className="text-red-400 text-sm mt-1">
-                    Over budget by ₹{Math.abs(budget.remaining).toFixed(2)}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-400 text-center py-4">No budget data for this period.</p>
+          )}
         </div>
+      </div>
       )}
 
-      {/* Monthly Trends */}
-      {trends && trends.monthly_trends.length > 0 && (
+      {trends && trends.monthly_data && Object.keys(trends.monthly_data).length > 0 && (
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-xl border border-slate-700">
           <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
             <BarChart3 className="mr-2" size={20} />
             Spending Trends
           </h3>
           <div className="space-y-3">
-            {trends.monthly_trends.map((month) => (
-              <div key={month.month} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
-                <span className="text-slate-300">{month.month}</span>
+            {Object.entries(trends?.monthly_data)?.map(([month, data]) => (
+              <div key={month} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
+                <span className="text-slate-300">{month}</span>
                 <div className="flex items-center space-x-4">
-                  <span className="text-slate-400 text-sm">{month.count} expenses</span>
-                  <span className="text-white font-semibold">₹{month.total.toFixed(2)}</span>
+                  <span className="text-slate-400 text-sm">{data.expense_count} expenses</span>
+                  <span className="text-white font-semibold">₹{data.total_spent.toFixed(2)}</span>
                 </div>
               </div>
             ))}

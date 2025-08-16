@@ -13,8 +13,8 @@ export const useTodos = () => {
     setError(null);
     try {
       const [todosResponse, goalsResponse] = await Promise.all([
-        apiClient.get('/api/v1/todos/tasks/'),
-        apiClient.get('/api/v1/todos/goals/')
+        apiClient.get('/todos/tasks/'),
+        apiClient.get('/todos/goals/')
       ]);
       setTodos(todosResponse.data);
       setGoals(goalsResponse.data);
@@ -29,7 +29,7 @@ export const useTodos = () => {
 
   const createTodo = useCallback(async (todoData) => {
     try {
-      const response = await apiClient.post('/api/v1/todos/tasks/', todoData);
+      const response = await apiClient.post('/todos/tasks/', todoData);
       setTodos(prev => [response.data, ...prev]);
       return response.data;
     } catch (err) {
@@ -40,7 +40,7 @@ export const useTodos = () => {
 
   const updateTodo = useCallback(async (id, updates) => {
     try {
-      const response = await apiClient.patch(`/api/v1/todos/tasks/${id}/`, updates);
+      const response = await apiClient.patch(`/todos/tasks/${id}/`, updates);
       setTodos(prev => prev.map(todo => 
         todo.id === id ? { ...todo, ...response.data } : todo
       ));
@@ -53,7 +53,7 @@ export const useTodos = () => {
 
   const deleteTodo = useCallback(async (id) => {
     try {
-      await apiClient.delete(`/api/v1/todos/tasks/${id}/`);
+      await apiClient.delete(`/todos/tasks/${id}/`);
       setTodos(prev => prev.filter(todo => todo.id !== id));
     } catch (err) {
       console.error('Error deleting todo:', err);
@@ -66,7 +66,7 @@ export const useTodos = () => {
     if (!todo) return;
 
     try {
-      const response = await apiClient.patch(`/api/v1/todos/tasks/${id}/`, {
+      const response = await apiClient.patch(`/todos/tasks/${id}/`, {
         is_completed: !todo.is_completed,
         completed_at: !todo.is_completed ? new Date().toISOString() : null
       });
@@ -86,7 +86,7 @@ export const useTodos = () => {
 
   const createGoal = useCallback(async (goalData) => {
     try {
-      const response = await apiClient.post('/api/v1/todos/goals/', goalData);
+      const response = await apiClient.post('/todos/goals/', goalData);
       setGoals(prev => [response.data, ...prev]);
       return response.data;
     } catch (err) {
@@ -97,7 +97,7 @@ export const useTodos = () => {
 
   const updateGoal = useCallback(async (id, updates) => {
     try {
-      const response = await apiClient.patch(`/api/v1/todos/goals/${id}/`, updates);
+      const response = await apiClient.patch(`/todos/goals/${id}/`, updates);
       setGoals(prev => prev.map(goal => 
         goal.id === id ? { ...goal, ...response.data } : goal
       ));
@@ -110,7 +110,7 @@ export const useTodos = () => {
 
   const deleteGoal = useCallback(async (id) => {
     try {
-      await apiClient.delete(`/api/v1/todos/goals/${id}/`);
+      await apiClient.delete(`/todos/goals/${id}/`);
       setGoals(prev => prev.filter(goal => goal.id !== id));
     } catch (err) {
       console.error('Error deleting goal:', err);
