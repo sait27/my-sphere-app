@@ -17,5 +17,5 @@ urlpatterns = [
     path('advanced/budget_analysis/', views.BudgetAnalysisView.as_view(), name='budget-analysis'),
     path('advanced/trends/', views.TrendsAnalysisView.as_view(), name='trends-analysis'),
     
-    path('<int:expense_id>/', views.ExpenseDetailAPIView.as_view(), name='expense-detail'),
+    path('<str:expense_id>/', views.ExpenseDetailAPIView.as_view(), name='expense-detail'),
 ]

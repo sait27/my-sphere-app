@@ -52,82 +52,113 @@ class ListBulkOperationsView(APIView):
         updated_count = 0
         
         if operation == 'delete':
-            count = lists.count()
-            lists.delete()
-            return {
-                'message': f'Successfully deleted {count} lists',
-                'updated_count': count
-            }
+            try:
+                count = lists.count()
+                lists.delete()
+                return {
+                    'message': f'Successfully deleted {count} lists',
+                    'updated_count': count
+                }
+            except Exception as e:
+                logger.error(f"Error deleting lists: {str(e)}")
+                raise ValueError(f"Failed to delete lists: {str(e)}")
         
         elif operation == 'archive':
-            updated_count = lists.update(
-                is_archived=True,
-                updated_at=timezone.now()
-            )
-            return {
-                'message': f'Successfully archived {updated_count} lists',
-                'updated_count': updated_count
-            }
+            try:
+                updated_count = lists.update(
+                    is_archived=True,
+                    updated_at=timezone.now()
+                )
+                return {
+                    'message': f'Successfully archived {updated_count} lists',
+                    'updated_count': updated_count
+                }
+            except Exception as e:
+                logger.error(f"Error archiving lists: {str(e)}")
+                raise ValueError(f"Failed to archive lists: {str(e)}")
         
         elif operation == 'unarchive':
-            updated_count = lists.update(
-                is_archived=False,
-                updated_at=timezone.now()
-            )
-            return {
-                'message': f'Successfully unarchived {updated_count} lists',
-                'updated_count': updated_count
-            }
+            try:
+                updated_count = lists.update(
+                    is_archived=False,
+                    updated_at=timezone.now()
+                )
+                return {
+                    'message': f'Successfully unarchived {updated_count} lists',
+                    'updated_count': updated_count
+                }
+            except Exception as e:
+                logger.error(f"Error unarchiving lists: {str(e)}")
+                raise ValueError(f"Failed to unarchive lists: {str(e)}")
         
         elif operation == 'mark_favorite':
-            updated_count = lists.update(
-                is_favorite=True,
-                updated_at=timezone.now()
-            )
-            return {
-                'message': f'Successfully marked {updated_count} lists as favorite',
-                'updated_count': updated_count
-            }
+            try:
+                updated_count = lists.update(
+                    is_favorite=True,
+                    updated_at=timezone.now()
+                )
+                return {
+                    'message': f'Successfully marked {updated_count} lists as favorite',
+                    'updated_count': updated_count
+                }
+            except Exception as e:
+                logger.error(f"Error marking lists as favorite: {str(e)}")
+                raise ValueError(f"Failed to mark lists as favorite: {str(e)}")
         
         elif operation == 'unmark_favorite':
-            updated_count = lists.update(
-                is_favorite=False,
-                updated_at=timezone.now()
-            )
-            return {
-                'message': f'Successfully unmarked {updated_count} lists as favorite',
-                'updated_count': updated_count
-            }
+            try:
+                updated_count = lists.update(
+                    is_favorite=False,
+                    updated_at=timezone.now()
+                )
+                return {
+                    'message': f'Successfully unmarked {updated_count} lists as favorite',
+                    'updated_count': updated_count
+                }
+            except Exception as e:
+                logger.error(f"Error unmarking lists as favorite: {str(e)}")
+                raise ValueError(f"Failed to unmark lists as favorite: {str(e)}")
         
         elif operation == 'change_category':
             category = data.get('category')
             if not category:
+                logger.error("Missing category for change_category operation")
                 raise ValueError('Category is required for change_category operation')
             
-            updated_count = lists.update(
-                category=category,
-                updated_at=timezone.now()
-            )
-            return {
-                'message': f'Successfully changed category for {updated_count} lists',
-                'updated_count': updated_count
-            }
+            try:
+                updated_count = lists.update(
+                    category=category,
+                    updated_at=timezone.now()
+                )
+                return {
+                    'message': f'Successfully changed category for {updated_count} lists',
+                    'updated_count': updated_count
+                }
+            except Exception as e:
+                logger.error(f"Error changing list categories: {str(e)}")
+                raise ValueError(f"Failed to change list categories: {str(e)}")
         
         elif operation == 'change_priority':
             priority = data.get('priority')
             if not priority:
+                logger.error("Missing priority for change_priority operation")
                 raise ValueError('Priority is required for change_priority operation')
             
-            updated_count = lists.update(
-                priority=priority,
-                updated_at=timezone.now()
-            )
-            return {
-                'message': f'Successfully changed priority for {updated_count} lists',
-                'updated_count': updated_count
-            }
+            try:
+                updated_count = lists.update(
+                    priority=priority,
+                    updated_at=timezone.now()
+                )
+                return {
+                    'message': f'Successfully changed priority for {updated_count} lists',
+                    'updated_count': updated_count
+                }
+            except Exception as e:
+                logger.error(f"Error changing list priorities: {str(e)}")
+                raise ValueError(f"Failed to change list priorities: {str(e)}")
         
         else:
+            logger.error(f"Unknown operation requested: {operation}")
             raise ValueError(f'Unknown operation: {operation}')
 
 
@@ -177,69 +208,93 @@ class ListItemBulkOperationsView(APIView):
         updated_count = 0
         
         if operation == 'delete':
-            count = len(items)
-            for item in items:
-                item.delete()
-            return {
-                'message': f'Successfully deleted {count} items',
-                'updated_count': count
-            }
+            try:
+                count = len(items)
+                for item in items:
+                    item.delete()
+                return {
+                    'message': f'Successfully deleted {count} items',
+                    'updated_count': count
+                }
+            except Exception as e:
+                logger.error(f"Error deleting items: {str(e)}")
+                raise ValueError(f"Failed to delete items: {str(e)}")
         
         elif operation == 'complete':
-            for item in items:
-                item.is_completed = True
-                item.completed_at = timezone.now()
-                item.save()
-                updated_count += 1
-            return {
-                'message': f'Successfully completed {updated_count} items',
-                'updated_count': updated_count
-            }
+            try:
+                for item in items:
+                    item.is_completed = True
+                    item.completed_at = timezone.now()
+                    item.save()
+                    updated_count += 1
+                return {
+                    'message': f'Successfully completed {updated_count} items',
+                    'updated_count': updated_count
+                }
+            except Exception as e:
+                logger.error(f"Error completing items: {str(e)}")
+                raise ValueError(f"Failed to complete items: {str(e)}")
         
         elif operation == 'uncomplete':
-            for item in items:
-                item.is_completed = False
-                item.completed_at = None
-                item.save()
-                updated_count += 1
-            return {
-                'message': f'Successfully uncompleted {updated_count} items',
-                'updated_count': updated_count
-            }
+            try:
+                for item in items:
+                    item.is_completed = False
+                    item.completed_at = None
+                    item.save()
+                    updated_count += 1
+                return {
+                    'message': f'Successfully uncompleted {updated_count} items',
+                    'updated_count': updated_count
+                }
+            except Exception as e:
+                logger.error(f"Error uncompleting items: {str(e)}")
+                raise ValueError(f"Failed to uncomplete items: {str(e)}")
         
         elif operation == 'change_priority':
             priority = data.get('priority')
             if not priority:
+                logger.error("Missing priority for change_priority operation")
                 raise ValueError('Priority is required for change_priority operation')
             
-            for item in items:
-                item.priority = priority
-                item.save()
-                updated_count += 1
-            return {
-                'message': f'Successfully changed priority for {updated_count} items',
-                'updated_count': updated_count
-            }
+            try:
+                for item in items:
+                    item.priority = priority
+                    item.save()
+                    updated_count += 1
+                return {
+                    'message': f'Successfully changed priority for {updated_count} items',
+                    'updated_count': updated_count
+                }
+            except Exception as e:
+                logger.error(f"Error changing item priorities: {str(e)}")
+                raise ValueError(f"Failed to change item priorities: {str(e)}")
         
         elif operation == 'move_to_list':
             target_list_id = data.get('target_list_id')
             if not target_list_id:
+                logger.error("Missing target_list_id for move_to_list operation")
                 raise ValueError('target_list_id is required for move_to_list operation')
             
             # Verify target list exists and belongs to user
             try:
                 target_list = List.objects.get(id=target_list_id, user=items[0].list.user)
             except List.DoesNotExist:
+                logger.error(f"Target list {target_list_id} not found or access denied")
                 raise ValueError('Target list not found or access denied')
             
-            for item in items:
-                item.list = target_list
-                item.save()
-                updated_count += 1
-            return {
-                'message': f'Successfully moved {updated_count} items to {target_list.name}',
-                'updated_count': updated_count
-            }
+            try:
+                for item in items:
+                    item.list = target_list
+                    item.save()
+                    updated_count += 1
+                return {
+                    'message': f'Successfully moved {updated_count} items to {target_list.name}',
+                    'updated_count': updated_count
+                }
+            except Exception as e:
+                logger.error(f"Error moving items to list {target_list_id}: {str(e)}")
+                raise ValueError(f"Failed to move items to list: {str(e)}")
         
         else:
+            logger.error(f"Unknown operation requested: {operation}")
             raise ValueError(f'Unknown operation: {operation}')

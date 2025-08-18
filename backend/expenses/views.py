@@ -127,21 +127,33 @@ class ExpenseAPIView(APIView):
 
         created_expenses_ids = []
         try:
-            for i, expense_data in enumerate(expense_list):
-                # Use .get() with default values to prevent crashes if a key is missing
-                new_expense = Expense.objects.create(
-                    user=user,
-                    raw_text=user_text,
-                    amount=expense_data.get('amount'),
-                    category=expense_data.get('category', 'Other'), # Default to 'Other'
-                    vendor=expense_data.get('vendor'), # Allows vendor to be missing
-                    description=expense_data.get('description'), # Add description field
-                    transaction_date=expense_data.get('transaction_date', datetime.now().strftime('%Y-%m-%d'))
-                )
-                created_expenses_ids.append(new_expense.expense_id)
-                print(f"✅ Created expense ID: {new_expense.expense_id}")
+            # Use a transaction to prevent race conditions
+            from django.db import transaction
             
-            print(f"✅ User '{user.username}' saved {len(created_expenses_ids)} new expenses.")
+            with transaction.atomic():
+                # Get the highest display_id for this user to ensure sequential numbering
+                # Use select_for_update to lock the row and prevent race conditions
+                highest_display_id = Expense.objects.filter(user=user).order_by('-display_id').select_for_update().first()
+                next_display_id = 1  # Default starting ID
+                if highest_display_id:
+                    next_display_id = highest_display_id.display_id + 1
+                    
+                for i, expense_data in enumerate(expense_list):
+                    # Use .get() with default values to prevent crashes if a key is missing
+                    new_expense = Expense.objects.create(
+                        user=user,
+                        display_id=next_display_id + i,  # Increment for each expense in batch
+                        raw_text=user_text,
+                        amount=expense_data.get('amount'),
+                        category=expense_data.get('category', 'Other'), # Default to 'Other'
+                        vendor=expense_data.get('vendor'), # Allows vendor to be missing
+                        description=expense_data.get('description'), # Add description field
+                        transaction_date=expense_data.get('transaction_date', datetime.now().strftime('%Y-%m-%d'))
+                    )
+                    created_expenses_ids.append(new_expense.expense_id)
+                    print(f"✅ Created expense ID: {new_expense.expense_id} with display_id: {new_expense.display_id}")
+                
+                print(f"✅ User '{user.username}' saved {len(created_expenses_ids)} new expenses.")
 
         except Exception as e:
             # If saving fails, this will now give us a much more detailed error
@@ -195,12 +207,29 @@ class ExpenseSummaryView(APIView):
             user=user, transaction_date__year=today.year, transaction_date__month=today.month
         ).aggregate(total=Sum('amount', output_field=DecimalField()))['total'] or 0.00
 
+        # --- THIS IS THE CORRECTED LOGIC ---
         current_budget_amount = 0.00
         try:
-            budget = Budget.objects.get(user=user, year=today.year, month=today.month)
+            # Find an active budget where today's date is between its start and end dates
+            # This is more flexible than relying on year/month fields
+            budget = Budget.objects.get(
+                user=user,
+                is_active=True,
+                start_date__lte=today,
+                end_date__gte=today
+            )
             current_budget_amount = budget.amount
         except Budget.DoesNotExist:
-            print(f"No budget found for user {user.username} for the current month.")
+            # It's okay if no budget is set for the current period. Don't crash.
+            print(f"No active budget found for user {user.username} for today's date.")
+        except Budget.MultipleObjectsReturned:
+            # Handle case where user might have multiple overlapping budgets
+            print(f"Warning: Multiple active budgets found for user {user.username}. Using the first one.")
+            budget = Budget.objects.filter(
+                user=user, is_active=True, start_date__lte=today, end_date__gte=today
+            ).first()
+            if budget:
+                current_budget_amount = budget.amount
 
         summary_data = {
             'today': today_sum,

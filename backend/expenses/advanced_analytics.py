@@ -329,42 +329,61 @@ class AdvancedExpenseAnalytics:
     def get_budget_analysis(self):
         """Get detailed budget analysis"""
         try:
-            budget_analysis_list = []
+            budget_analysis_data = [] # We'll build a list directly
             active_budgets = self.budgets.filter(is_active=True)
             
-            for budget in active_budgets:
-                category_expenses = self.expenses.filter(category=budget.category)
-                total_spent = float(category_expenses.aggregate(Sum('amount'))['amount__sum'] or 0)
-                budget_amount = float(budget.amount)
-                
-                percentage_used = (total_spent / budget_amount * 100) if budget_amount > 0 else 0
-                
-                budget_analysis_list.append({
-                    'category': budget.category,
-                    'budget_limit': budget_amount,
-                    'spent': total_spent,
-                    'remaining': budget_amount - total_spent,
-                    'percentage_used': percentage_used,
-                    'is_over_budget': total_spent > budget_amount
-                })
-                
-            # Overall budget summary
-            total_budget = sum(float(b.amount) for b in active_budgets)
-            total_spent_overall = sum(item['spent'] for item in budget_analysis_list)
-            overall_percentage = (total_spent_overall / total_budget * 100) if total_budget > 0 else 0
+            # Determine the current month's date range to filter expenses
+            now = timezone.now()
+            start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             
+            # Pre-calculate total spending for this month for efficiency
+            total_spent_this_month = self.expenses.filter(
+                transaction_date__gte=start_of_month.date()
+            ).aggregate(total=Sum('amount'))['total'] or 0
+
+            for budget in active_budgets:
+                budget_amount = float(budget.amount)
+                total_spent_for_budget = 0
+                expense_count = 0
+                
+                # --- THIS IS THE CRITICAL FIX ---
+                # Check if the budget is a general, 'Overall' budget
+                if budget.category and budget.category.lower() == 'overall':
+                    # If it is, use the total spending for the entire month
+                    total_spent_for_budget = float(total_spent_this_month)
+                    # And count all expenses in the month
+                    expense_count = self.expenses.filter(transaction_date__gte=start_of_month.date()).count()
+                else:
+                    # Otherwise, use the existing logic for specific category budgets
+                    category_expenses = self.expenses.filter(
+                        category=budget.category, 
+                        transaction_date__gte=start_of_month.date()
+                    )
+                    total_spent_for_budget = float(category_expenses.aggregate(Sum('amount'))['amount__sum'] or 0)
+                    expense_count = category_expenses.count()
+                # --- END OF FIX ---
+                
+                percentage_used = round((total_spent_for_budget / budget_amount) * 100, 1) if budget_amount > 0 else 0
+                
+                budget_analysis_data.append({
+                    'category': budget.category,
+                    'budget_amount': budget_amount,
+                    'spent_amount': total_spent_for_budget,
+                    'remaining_amount': budget_amount - total_spent_for_budget,
+                    'utilization_percentage': percentage_used,
+                    'status': 'over_budget' if total_spent_for_budget > budget_amount else 'under_budget',
+                    'expense_count': expense_count
+                })
+            
+            # Build the final response structure
             return {
-                'budget_analysis': budget_analysis_list,  # <-- Correct key and format
-                'overall_summary': {
-                    'total_budget': total_budget,
-                    'total_spent': total_spent_overall,
-                    'remaining_budget': total_budget - total_spent_overall,
-                    'percentage_used': overall_percentage,
-                }
+                'budget_analysis': budget_analysis_data,
+                'overall_summary': {}, # Can be enhanced later if needed
+                'recommendations': [] # Can be enhanced later if needed
             }
         except Exception as e:
-            print(f"🔴 ERROR IN get_budget_analysis: {str(e)}") # Add this print
-            raise e
+            print(f"🔴 ERROR IN get_budget_analysis: {str(e)}")
+            return { 'budget_analysis': [], 'overall_summary': {}, 'recommendations': [] }
 
     def get_trends_analysis(self, months=6):
         """Get spending trends analysis for the specified number of months"""

@@ -125,7 +125,45 @@ class Expense(models.Model):
                 self.display_id = last_expense.display_id + 1
             else:
                 self.display_id = 1
+        self.full_clean()
         super().save(*args, **kwargs)
+        
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        from django.utils.translation import gettext_lazy as _
+        from decimal import Decimal
+        import datetime
+        
+        # Validate amount is not negative
+        if self.amount < Decimal('0'):
+            raise ValidationError({
+                'amount': _('Expense amount cannot be negative.')
+            })
+            
+        # Validate tax_amount is not negative
+        if self.tax_amount < Decimal('0'):
+            raise ValidationError({
+                'tax_amount': _('Tax amount cannot be negative.')
+            })
+            
+        # Validate tip_amount is not negative
+        if self.tip_amount < Decimal('0'):
+            raise ValidationError({
+                'tip_amount': _('Tip amount cannot be negative.')
+            })
+            
+        # Validate discount_amount is not negative
+        if self.discount_amount < Decimal('0'):
+            raise ValidationError({
+                'discount_amount': _('Discount amount cannot be negative.')
+            })
+            
+        # Validate transaction_date is not in the future
+        today = datetime.date.today()
+        if self.transaction_date > today:
+            raise ValidationError({
+                'transaction_date': _('Transaction date cannot be in the future.')
+            })
     
     class Meta:
         ordering = ['-transaction_date', '-created_at']
