@@ -15,12 +15,22 @@ export const useListAnalytics = (period = 'month') => {
       setLoading(true);
       setError(null);
       
+      console.log('Fetching list analytics for period:', selectedPeriod);
       const response = await apiClient.get(`/lists/analytics/?period=${selectedPeriod}`);
+      console.log('List analytics response:', response.data);
       setAnalytics(response.data);
     } catch (err) {
-      setError('Failed to fetch analytics');
-      toast.error('Failed to load analytics data');
       console.error('Analytics fetch error:', err);
+      console.error('Error details:', {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        message: err.message
+      });
+      
+      setError('Failed to fetch analytics');
+      const errorMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to load analytics data';
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }

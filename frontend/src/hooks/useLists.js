@@ -22,29 +22,62 @@ export const useLists = () => {
   // Fetch lists with filters and pagination
   const fetchLists = useCallback(async (page = 1) => {
     try {
+      console.log('useLists: fetchLists called with page:', page);
       setLoading(true);
       setError(null);
       
-      const params = new URLSearchParams({
-        page: page.toString(),
-        ordering: sortBy,
-        search: filters.search,
-        list_type: filters.list_type,
-        priority: filters.priority,
-        is_archived: filters.is_archived,
-        category: filters.category,
-        ...Object.fromEntries(
-          Object.entries(filters).filter(([key, value]) => value !== '' && value !== false && !['search', 'list_type', 'priority', 'is_archived', 'category'].includes(key))
-        )
+      console.log('useLists: Fetching lists with filters:', { filters, sortBy, page });
+      
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('ordering', sortBy);
+      
+      // Add filters only if they have values
+      if (filters.search && filters.search.trim()) {
+        params.append('search', filters.search.trim());
+      }
+      if (filters.list_type && filters.list_type !== 'all') {
+        params.append('list_type', filters.list_type);
+      }
+      if (filters.priority && filters.priority !== 'all') {
+        params.append('priority', filters.priority);
+      }
+      if (filters.is_archived !== undefined && filters.is_archived !== false) {
+        params.append('is_archived', filters.is_archived);
+      }
+      if (filters.category && filters.category !== 'all') {
+        params.append('category', filters.category);
+      }
+      
+      // Add any other filters
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value && value !== '' && value !== 'all' && value !== false && 
+            !['search', 'list_type', 'priority', 'is_archived', 'category'].includes(key)) {
+          params.append(key, value);
+        }
       });
 
+      console.log('useLists: API request params:', params.toString());
+      console.log('useLists: Making API call to:', `/lists/?${params}`);
+      
       const response = await apiClient.get(`/lists/?${params}`);
+      console.log('useLists: API response received:', response);
+      console.log('useLists: Lists fetched:', response.data);
+      
       setLists(response.data.results || response.data);
       return response.data;
     } catch (err) {
+      console.error('useLists: Fetch lists error:', err);
+      console.error('useLists: Error details:', {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        message: err.message
+      });
+      
       setError('Failed to fetch lists');
-      toast.error('Failed to load lists');
-      console.error('Fetch lists error:', err);
+      const errorMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to load lists';
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -130,16 +163,12 @@ export const useLists = () => {
     if (!listId) return null;
     
     try {
-      // Cancel any pending requests for this list
-      const controller = new AbortController();
-      
-      const response = await apiClient.get(`/lists/${listId}/`, {
-        signal: controller.signal
-      });
+      const response = await apiClient.get(`/lists/${listId}/`);
       const listData = response.data;
       
-      // Only update if this is still the current request
+      // Only update if this is still the most recent request for this list
       setSelectedList(prev => {
+        // If we already have this list and it's the same ID, merge the data
         if (prev?.id === listId) {
           return { ...prev, ...listData };
         }
@@ -148,10 +177,8 @@ export const useLists = () => {
       
       return listData;
     } catch (err) {
-      if (err.name === 'AbortError') {
-        return null; // Request was cancelled
-      }
       const errorMsg = err.response?.data?.error || 'Failed to fetch list details';
+      console.error('Fetch list details error:', err);
       toast.error(errorMsg);
       throw err;
     }
@@ -160,26 +187,58 @@ export const useLists = () => {
   // Add items using AI parsing
   const addItemsWithAI = useCallback(async (listId, text) => {
     try {
+      console.log('Sending AI parsing request:', { listId, text });
       const response = await apiClient.post(`/lists/${listId}/add_items/`, { text });
+      const { list: updatedList, status: statusMessage } = response.data;
+      console.log('AI parsing response:', response.data);
+
+      if (!updatedList) {
+        toast.error('API did not return the updated list as expected.');
+        throw new Error('API did not return the updated list as expected.');
+      }
+
+      // Update the main lists array with the new data.
+      setLists(prev => 
+        prev.map(list => (list.id === listId ? updatedList : list))
+      );
       
-      // Only refresh if this is the currently selected list
+      // Also update the selectedList if it's the one being modified
       if (selectedList?.id === listId) {
-        await fetchListDetails(listId);
+        setSelectedList(updatedList);
       }
       
-      toast.success(response.data.status || 'Items added successfully!');
-      return response.data;
+      toast.success(statusMessage || 'Items added successfully!');
+      return updatedList; // Return the full updated list
+
     } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Failed to add items';
+      console.error('addItemsWithAI error:', err);
+      const errorDetails = {
+        status: err.response?.status,
+        data: err.response?.data,
+        message: err.message
+      };
+      console.error('Error details:', errorDetails);
+      
+      let errorMsg = 'Failed to add items.';
+      if (errorDetails.data?.error) {
+        errorMsg = errorDetails.data.error;
+      } else if (errorDetails.data?.detail) {
+        errorMsg = errorDetails.data.detail;
+      } else if (errorDetails.status === 500) {
+        errorMsg = 'Server error: The AI service might be unavailable.';
+      } else if (errorDetails.status === 404) {
+        errorMsg = 'The requested list was not found.';
+      }
+      
       toast.error(errorMsg);
       throw err;
     }
-  }, [selectedList?.id, fetchListDetails]);
+  }, [selectedList]);
 
   // Create item manually
   const createItem = useCallback(async (listId, itemData) => {
     try {
-      const response = await apiClient.post(`/lists/${listId}/items/`, itemData);
+      const response = await apiClient.post(`/lists/${listId}/create_item/`, itemData);
       const newItem = response.data;
       
       // Update selected list if it's the current one
@@ -189,6 +248,13 @@ export const useLists = () => {
           items: [...(prev.items || []), newItem]
         }));
       }
+      
+      // Also update the lists array to reflect changes
+      setLists(prev => prev.map(list => 
+        list.id === listId 
+          ? { ...list, items: [...(list.items || []), newItem] }
+          : list
+      ));
       
       toast.success('Item added successfully!');
       return newItem;
@@ -211,25 +277,24 @@ export const useLists = () => {
       throw new Error('Item not found in current list');
     }
 
-    // Optimistic update
-    setSelectedList(prev => ({
-      ...prev,
-      items: prev.items.map(item => 
-        item.id === itemId ? { ...item, ...updateData } : item
-      )
-    }));
-
     try {
-      const response = await apiClient.patch(`/lists/${selectedList.id}/items/${itemId}/`, updateData);
+      const response = await apiClient.patch(`/lists/items/${itemId}/`, updateData);
       const updatedItem = response.data;
       
-      // Update with server response
+      // Update selectedList state
       setSelectedList(prev => ({
         ...prev,
         items: prev.items.map(item => 
           item.id === itemId ? updatedItem : item
         )
       }));
+      
+      // Update lists array as well
+      setLists(prev => prev.map(list => 
+        list.id === selectedList.id 
+          ? { ...list, items: list.items?.map(item => item.id === itemId ? updatedItem : item) || [] }
+          : list
+      ));
       
       // Only show toast for significant updates
       if (updateData.name || updateData.description) {
@@ -238,14 +303,6 @@ export const useLists = () => {
       
       return updatedItem;
     } catch (err) {
-      // Rollback optimistic update
-      setSelectedList(prev => ({
-        ...prev,
-        items: prev.items.map(item => 
-          item.id === itemId ? originalItem : item
-        )
-      }));
-      
       const errorMsg = err.response?.data?.error || 'Failed to update item';
       toast.error(errorMsg);
       throw err;
@@ -257,7 +314,7 @@ export const useLists = () => {
     try {
       await apiClient.delete(`/lists/items/${itemId}/`);
       
-      // Update selected list items optimistically
+      // Update selected list items
       if (selectedList?.items) {
         setSelectedList(prev => ({
           ...prev,
@@ -265,31 +322,33 @@ export const useLists = () => {
         }));
       }
       
-      toast.success('Item deleted successfully!');
+      // Update lists array as well
+      setLists(prev => prev.map(list => 
+        list.id === selectedList?.id 
+          ? { ...list, items: list.items?.filter(item => item.id !== itemId) || [] }
+          : list
+      ));
+      
+      // Don't show toast here - let the component handle it
+      return true;
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Failed to delete item';
       toast.error(errorMsg);
-      // Revert optimistic update on error
-      if (selectedList?.id) {
-        await fetchListDetails(selectedList.id);
-      }
       throw err;
     }
-  }, [selectedList, fetchListDetails]);
+  }, [selectedList]);
 
-  // Bulk operations on items
-  const bulkOperations = useCallback(async (operation, itemIds, additionalData = {}) => {
+  // Bulk operations on lists
+  const bulkOperations = useCallback(async (operation, listIds, additionalData = {}) => {
     try {
-      const response = await apiClient.post('/lists/bulk/', {
+      const response = await apiClient.post('/lists/bulk-operations/', {
         operation,
-        item_ids: Array.from(itemIds),
+        list_ids: Array.from(listIds),
         ...additionalData
       });
       
-      // Refresh current list if items were affected
-      if (selectedList && itemIds.size > 0) {
-        await fetchListDetails(selectedList.id);
-      }
+      // Refresh lists after bulk operation
+      await fetchLists();
       
       // Clear selections
       setSelectedItems(new Set());
@@ -301,7 +360,7 @@ export const useLists = () => {
       toast.error(errorMsg);
       throw err;
     }
-  }, [selectedList, fetchListDetails]);
+  }, [fetchLists]);
 
   // Toggle item selection
   const toggleItemSelection = useCallback((itemId) => {

@@ -17,7 +17,7 @@ function LoginPage({ onLoginSuccess }) {
     event.preventDefault();
     setIsLoading(true);
     try {
-      const response = await apiClient.post('http://127.0.0.1:8000/api/v1/users/login/', {
+      const response = await apiClient.post('/users/login/', {
         username: username,
         password: password,
       });

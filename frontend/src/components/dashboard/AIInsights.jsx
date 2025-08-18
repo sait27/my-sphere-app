@@ -26,8 +26,8 @@ const AIInsights = () => {
   const fetchInsights = async () => {
     try {
       setError(null);
-      const response = await apiClient.get('/api/v1/ai-insights/');
-      setInsights(response.data);
+      // Show "Coming Soon" instead of making API call
+      setInsights({ comingSoon: true });
     } catch (err) {
       console.error('Error fetching AI insights:', err);
       setError('Failed to load AI insights');
@@ -156,7 +156,29 @@ const AIInsights = () => {
         </button>
       </div>
 
-      {insights && insights.insights && insights.insights.length > 0 ? (
+      {insights && insights.comingSoon ? (
+        <div className="text-center py-8">
+          <div className="relative mx-auto w-20 h-20 mb-6">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full opacity-20 animate-pulse"></div>
+            <div className="absolute inset-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-white animate-pulse" />
+            </div>
+          </div>
+          <h4 className="text-2xl font-bold text-white mb-3 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Coming Soon!
+          </h4>
+          <p className="text-slate-300 mb-4 max-w-md mx-auto leading-relaxed">
+            AI-powered insights are being developed to provide you with personalized financial recommendations and spending analysis.
+          </p>
+          <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
+            <Brain className="w-4 h-4" />
+            <span>Powered by advanced machine learning</span>
+          </div>
+          <div className="mt-6 px-4 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg border border-purple-500/30 inline-block">
+            <p className="text-xs text-purple-300 font-medium">Stay tuned for smart spending insights!</p>
+          </div>
+        </div>
+      ) : insights && insights.insights && insights.insights.length > 0 ? (
         <div className="space-y-4">
           {insights.insights.map((insight, index) => (
             <motion.div

@@ -14,56 +14,84 @@ import {
   Settings
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import apiClient from '../../api/axiosConfig';
+import { useListSharing } from '../../hooks/useListSharing';
 
 const ShareListModal = ({ isOpen, onClose, list }) => {
-  const [shares, setShares] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newShare, setNewShare] = useState({
+    email: '',
     permission: 'view',
     expires_in_days: 30
   });
 
+  const { 
+    shares, 
+    loading, 
+    error,
+    shareList,
+    removeSharing,
+    updateSharing,
+    fetchListShares
+  } = useListSharing();
+
   useEffect(() => {
     if (isOpen && list) {
-      fetchShares();
+      fetchListShares(list.id);
     }
-  }, [isOpen, list]);
-
-  const fetchShares = async () => {
-    setLoading(true);
-    try {
-      const response = await apiClient.get(`/api/v1/lists/${list.id}/share/`);
-      setShares(response.data);
-    } catch (error) {
-      console.error('Error fetching shares:', error);
-      toast.error('Failed to load shares');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [isOpen, list, fetchListShares]);
 
   const createShare = async () => {
+    if (!newShare.email) {
+      toast.error('Please enter an email address');
+      return;
+    }
+    
+    if (!validateEmail(newShare.email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    
     setCreating(true);
     try {
-      const response = await apiClient.post(`/api/v1/lists/${list.id}/share/`, newShare);
-      setShares(prev => [response.data, ...prev]);
-      toast.success('Share link created successfully!');
+      await shareList(list.id, newShare.email, newShare.permission);
+      setNewShare({ email: '', permission: 'view', expires_in_days: 30 });
+      toast.success('List shared successfully!');
     } catch (error) {
       console.error('Error creating share:', error);
-      toast.error('Failed to create share link');
     } finally {
       setCreating(false);
     }
   };
+  
+  const validateEmail = (email) => {
+    return String(email)
+      .toLowerCase()
+      .match(
+        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+      );
+  };
+
+  const deleteShare = async (shareId) => {
+    try {
+      await removeSharing(shareId);
+      toast.success('Share removed successfully');
+    } catch (error) {
+      console.error('Error deleting share:', error);
+    }
+  };
+
+  const updateShare = async (shareId, permission) => {
+    try {
+      await updateSharing(shareId, permission);
+      toast.success('Share permissions updated');
+    } catch (error) {
+      console.error('Error updating share:', error);
+    }
+  };
 
   const copyShareLink = (shareUrl) => {
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      toast.success('Share link copied to clipboard!');
-    }).catch(() => {
-      toast.error('Failed to copy link');
-    });
+    navigator.clipboard.writeText(shareUrl);
+    toast.success('Share link copied to clipboard');
   };
 
   const revokeShare = async (shareId) => {
@@ -72,8 +100,7 @@ const ShareListModal = ({ isOpen, onClose, list }) => {
     }
 
     try {
-      await apiClient.delete(`/api/v1/lists/${list.id}/share/${shareId}/`);
-      setShares(prev => prev.filter(share => share.id !== shareId));
+      await removeSharing(shareId);
       toast.success('Share link revoked successfully');
     } catch (error) {
       console.error('Error revoking share:', error);
@@ -108,214 +135,181 @@ const ShareListModal = ({ isOpen, onClose, list }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-slate-800 rounded-2xl p-6 w-full max-w-2xl border border-slate-700/50 shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="relative w-full max-w-2xl bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-xl overflow-hidden"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-6">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-700/50">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg">
-                  <Share2 className="w-6 h-6 text-white" />
+                <div className="p-2 bg-blue-500/20 rounded-xl">
+                  <Share2 className="text-blue-400" size={20} />
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">Share List</h2>
-                  <p className="text-slate-400 text-sm">{list.name}</p>
-                </div>
+                <h2 className="text-xl font-semibold text-white">
+                  Share List
+                </h2>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+                className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700/50 transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
 
-            {/* Create New Share */}
-            <div className="bg-slate-700/30 rounded-xl p-4 mb-6 border border-slate-600/30">
-              <h3 className="text-lg font-semibold text-white mb-4">Create Share Link</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Permission Level
-                  </label>
-                  <select
-                    value={newShare.permission}
-                    onChange={(e) => setNewShare(prev => ({ ...prev, permission: e.target.value }))}
-                    className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  >
-                    <option value="view">View Only</option>
-                    <option value="edit">View & Edit</option>
-                  </select>
+            {/* Content */}
+            <div className="p-6">
+              {/* List Info */}
+              {list && (
+                <div className="mb-6 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                  <h3 className="text-lg font-medium text-white mb-1">{list.name}</h3>
+                  <p className="text-sm text-slate-400">
+                    {list.description || 'No description'}
+                  </p>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Expires In
-                  </label>
-                  <select
-                    value={newShare.expires_in_days}
-                    onChange={(e) => setNewShare(prev => ({ ...prev, expires_in_days: parseInt(e.target.value) }))}
-                    className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              )}
+
+              {/* Create New Share */}
+              <div className="mb-8">
+                <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                  <UserPlus size={18} className="text-blue-400" />
+                  Share with others
+                </h3>
+
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-grow">
+                    <label className="block text-sm font-medium text-slate-400 mb-2">Email address</label>
+                    <input
+                      type="email"
+                      value={newShare.email}
+                      onChange={(e) => setNewShare({ ...newShare, email: e.target.value })}
+                      placeholder="Enter email address"
+                      className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50"
+                    />
+                  </div>
+                  <div className="w-full md:w-1/3">
+                    <label className="block text-sm font-medium text-slate-400 mb-2">Permission</label>
+                    <select
+                      value={newShare.permission}
+                      onChange={(e) => setNewShare({ ...newShare, permission: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50"
+                    >
+                      <option value="view">View only</option>
+                      <option value="edit">Can edit</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={createShare}
+                    disabled={creating || !newShare.email}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    <option value={1}>1 Day</option>
-                    <option value={7}>1 Week</option>
-                    <option value={30}>1 Month</option>
-                    <option value={90}>3 Months</option>
-                    <option value={365}>1 Year</option>
-                  </select>
+                    {creating ? (
+                      <>
+                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                        Sharing...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus size={18} />
+                        Share List
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
-              
-              <button
-                onClick={createShare}
-                disabled={creating}
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {creating ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                ) : (
-                  <>
-                    <Link size={16} />
-                    Create Share Link
-                  </>
-                )}
-              </button>
-            </div>
 
-            {/* Existing Shares */}
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">Active Share Links</h3>
-              
-              {loading ? (
-                <div className="space-y-3">
-                  {[1, 2].map(i => (
-                    <div key={i} className="animate-pulse bg-slate-700/30 rounded-lg p-4">
-                      <div className="h-4 bg-slate-600 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-slate-600 rounded w-1/2"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : shares.length === 0 ? (
-                <div className="text-center py-8">
-                  <Users className="mx-auto text-slate-500 mb-3" size={48} />
-                  <p className="text-slate-400 mb-2">No active shares</p>
-                  <p className="text-slate-500 text-sm">Create a share link to collaborate with others</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {shares.map((share) => (
-                    <motion.div
-                      key={share.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-slate-700/30 rounded-lg p-4 border border-slate-600/30"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${getPermissionColor(share.permission)}`}>
-                            {getPermissionIcon(share.permission)}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-white font-medium">
-                                {share.permission === 'edit' ? 'Edit Access' : 'View Only'}
-                              </span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPermissionColor(share.permission)}`}>
-                                {share.permission}
-                              </span>
+              {/* Existing Shares */}
+              <div>
+                <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                  <Users size={18} className="text-blue-400" />
+                  People with access
+                </h3>
+
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                  </div>
+                ) : shares && shares.length > 0 ? (
+                  <div className="space-y-4">
+                    {shares.map((share) => (
+                      <div 
+                        key={share.id} 
+                        className="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-white font-medium">
+                              {share.user_email ? share.user_email[0].toUpperCase() : 'U'}
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-slate-400 mt-1">
-                              <div className="flex items-center gap-1">
-                                <Calendar size={12} />
-                                {formatExpiryDate(share.expires_at)}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Users size={12} />
-                                {share.collaborator_count} collaborator{share.collaborator_count !== 1 ? 's' : ''}
-                              </div>
+                            <div>
+                              <p className="font-medium text-white">{share.user_email}</p>
+                              <p className="text-xs text-slate-400">
+                                {new Date(share.created_at).toLocaleDateString()} • 
+                                {share.permission === 'view' && 'Viewer'}
+                                {share.permission === 'edit' && 'Editor'}
+                                {share.permission === 'admin' && 'Admin'}
+                              </p>
                             </div>
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => copyShareLink(share.share_url)}
-                            className="p-2 text-slate-400 hover:text-white hover:bg-slate-600/50 rounded-lg transition-colors"
-                            title="Copy link"
+                        <div className="flex items-center gap-2 self-end md:self-auto">
+                          <select
+                            value={share.permission}
+                            onChange={(e) => updateShare(share.id, e.target.value)}
+                            className="px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                           >
-                            <Copy size={16} />
-                          </button>
+                            <option value="view">View only</option>
+                            <option value="edit">Can edit</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          
                           <button
-                            onClick={() => revokeShare(share.id)}
-                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                            title="Revoke share"
+                            onClick={() => deleteShare(share.id)}
+                            className="p-2 text-slate-400 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-colors"
+                            title="Remove access"
                           >
                             <Trash2 size={16} />
                           </button>
                         </div>
                       </div>
-                      
-                      {/* Share URL */}
-                      <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-600/30">
-                        <div className="flex items-center gap-2">
-                          <code className="flex-1 text-sm text-slate-300 truncate">
-                            {share.share_url}
-                          </code>
-                          <button
-                            onClick={() => copyShareLink(share.share_url)}
-                            className="px-3 py-1 bg-blue-600/20 text-blue-400 rounded text-sm hover:bg-blue-600/30 transition-colors"
-                          >
-                            Copy
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {/* Collaborators */}
-                      {share.collaborators && share.collaborators.length > 0 && (
-                        <div className="mt-3">
-                          <p className="text-sm text-slate-400 mb-2">Collaborators:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {share.collaborators.map((collaborator) => (
-                              <div
-                                key={collaborator.id}
-                                className="flex items-center gap-2 bg-slate-800/50 rounded-lg px-3 py-1 border border-slate-600/30"
-                              >
-                                <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                                  {collaborator.first_name?.[0] || collaborator.username[0].toUpperCase()}
-                                </div>
-                                <span className="text-sm text-slate-300">
-                                  {collaborator.first_name && collaborator.last_name 
-                                    ? `${collaborator.first_name} ${collaborator.last_name}`
-                                    : collaborator.username
-                                  }
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </motion.div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-400">
+                    <Users className="mx-auto mb-3 text-slate-500" size={32} />
+                    <p>This list hasn't been shared with anyone yet</p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Tips */}
-            <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-              <h4 className="text-blue-400 font-medium mb-2">Sharing Tips</h4>
-              <ul className="text-sm text-blue-300/80 space-y-1">
-                <li>• View access allows others to see the list and items</li>
-                <li>• Edit access allows adding, editing, and completing items</li>
-                <li>• Share links expire automatically for security</li>
-                <li>• You can revoke access at any time</li>
-              </ul>
+            {/* Footer */}
+            <div className="p-6 border-t border-slate-700/50 flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-6 py-3 bg-slate-700/50 hover:bg-slate-700 text-white font-medium rounded-xl transition-colors"
+              >
+                Done
+              </button>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );

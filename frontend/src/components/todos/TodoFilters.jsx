@@ -1,9 +1,9 @@
 import React from 'react';
-import { Filter, ChevronDown } from 'lucide-react';
+import { Filter, ChevronDown, Tag } from 'lucide-react';
 
-const TodoFilters = ({ filters, onFiltersChange, goals = [] }) => {
+const TodoFilters = ({ selectedFilters, setSelectedFilters, goals = [] }) => {
   const handleFilterChange = (key, value) => {
-    onFiltersChange(prev => ({ ...prev, [key]: value }));
+    setSelectedFilters(prev => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -16,7 +16,7 @@ const TodoFilters = ({ filters, onFiltersChange, goals = [] }) => {
       {/* Status Filter */}
       <div className="relative">
         <select
-          value={filters.status}
+          value={selectedFilters.status}
           onChange={(e) => handleFilterChange('status', e.target.value)}
           className="appearance-none bg-slate-700/50 border border-slate-600/50 rounded-lg px-3 py-2 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
         >
@@ -30,7 +30,7 @@ const TodoFilters = ({ filters, onFiltersChange, goals = [] }) => {
       {/* Priority Filter */}
       <div className="relative">
         <select
-          value={filters.priority}
+          value={selectedFilters.priority}
           onChange={(e) => handleFilterChange('priority', e.target.value)}
           className="appearance-none bg-slate-700/50 border border-slate-600/50 rounded-lg px-3 py-2 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
         >
@@ -46,7 +46,7 @@ const TodoFilters = ({ filters, onFiltersChange, goals = [] }) => {
       {goals.length > 0 && (
         <div className="relative">
           <select
-            value={filters.goal}
+            value={selectedFilters.goal}
             onChange={(e) => handleFilterChange('goal', e.target.value)}
             className="appearance-none bg-slate-700/50 border border-slate-600/50 rounded-lg px-3 py-2 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
           >
@@ -60,6 +60,26 @@ const TodoFilters = ({ filters, onFiltersChange, goals = [] }) => {
           <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
         </div>
       )}
+
+      {/* Category Filter */}
+      <div className="relative">
+        <select
+          value={selectedFilters.category || 'all'}
+          onChange={(e) => handleFilterChange('category', e.target.value)}
+          className="appearance-none bg-slate-700/50 border border-slate-600/50 rounded-lg px-3 py-2 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
+        >
+          <option value="all">All Categories</option>
+          <option value="work">Work</option>
+          <option value="personal">Personal</option>
+          <option value="health">Health</option>
+          <option value="education">Education</option>
+          <option value="finance">Finance</option>
+          <option value="social">Social</option>
+          <option value="home">Home</option>
+          <option value="other">Other</option>
+        </select>
+        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+      </div>
     </div>
   );
 };

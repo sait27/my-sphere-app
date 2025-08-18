@@ -1,18 +1,44 @@
 // components/ListInsights.jsx
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useListInsights } from '../../hooks/useListInsights';
 import { 
   TrendingUp, TrendingDown, Zap, Clock, 
   Target, Award, AlertCircle, CheckCircle,
   Calendar, Users, Star, BarChart3
 } from 'lucide-react';
 
-const ListInsights = ({ list, analytics }) => {
-  if (!list || !analytics) return null;
-
-  const insights = analytics.insights || [];
-  const productivity = analytics.productivity || {};
-  const trends = analytics.trends || {};
+const ListInsights = ({ list }) => {
+  const { insights: insightsData, loading, error, fetchInsights } = useListInsights();
+  
+  useEffect(() => {
+    if (list?.id) {
+      fetchInsights(list.id);
+    }
+  }, [list?.id, fetchInsights]);
+  
+  if (!list || loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 text-center">
+        <AlertCircle className="mx-auto text-red-400 mb-2" size={24} />
+        <p className="text-red-400">Failed to load insights</p>
+      </div>
+    );
+  }
+  
+  if (!insightsData) return null;
+  
+  const insights = insightsData.insights || [];
+  const productivity = insightsData.productivity || {};
+  const trends = insightsData.trends || {};
 
   const getInsightIcon = (type) => {
     switch (type) {

@@ -1,11 +1,12 @@
 // components/ListAnalytics.jsx
 
-import React, { useState, useEffect } from 'react';
-import { useListAnalytics } from '../../hooks/useListAnalytics';
+import React, { useState } from 'react';
+// CHANGE: We no longer need the hook here
+// import { useListAnalytics } from '../../hooks/useListAnalytics';
 import { 
   BarChart3, PieChart, TrendingUp, Clock, Target, 
   CheckCircle, ListChecks, Users, Calendar, Award,
-  ArrowUp, ArrowDown, Minus, Zap
+  ArrowUp, ArrowDown, Minus, Zap, AlertCircle
 } from 'lucide-react';
 import { Pie, Line, Bar } from 'react-chartjs-2';
 import {
@@ -36,7 +37,7 @@ ChartJS.register(
   Filler
 );
 
-// LoadingSpinner component
+// LoadingSpinner component (no changes)
 const LoadingSpinner = ({ size = 'md' }) => {
   const sizeClasses = {
     sm: 'h-4 w-4',
@@ -49,7 +50,7 @@ const LoadingSpinner = ({ size = 'md' }) => {
   );
 };
 
-// AnalyticsCard component
+// AnalyticsCard component (no changes)
 const AnalyticsCard = ({ icon: Icon, title, value, subtitle, color }) => {
   const colorClasses = {
     cyan: 'from-cyan-500/20 to-blue-500/20 text-cyan-400',
@@ -74,7 +75,7 @@ const AnalyticsCard = ({ icon: Icon, title, value, subtitle, color }) => {
   );
 };
 
-// CompletionChart component
+// CompletionChart component (no changes)
 const CompletionChart = ({ trends }) => {
   if (!trends || trends.length === 0) {
     return (
@@ -133,7 +134,7 @@ const CompletionChart = ({ trends }) => {
   );
 };
 
-// ListTypeBreakdown component
+// ListTypeBreakdown component (no changes)
 const ListTypeBreakdown = ({ types }) => {
   if (!types || types.length === 0) {
     return (
@@ -188,7 +189,7 @@ const ListTypeBreakdown = ({ types }) => {
   );
 };
 
-// InsightCard component
+// InsightCard component (no changes)
 const InsightCard = ({ insight }) => {
   const getInsightIcon = (type) => {
     switch (type) {
@@ -216,24 +217,37 @@ const InsightCard = ({ insight }) => {
   );
 };
 
-const ListAnalytics = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('month');
-  const { analytics, loading, error, fetchAnalytics } = useListAnalytics();
+// CHANGE: Accept props from the parent component
+const ListAnalytics = ({ analytics, loading, error, fetchAnalytics }) => {
+  // CHANGE: Remove the internal hook call
+  /*
+  const {
+    loading,
+    error,
+    ...
+  } = useListAnalytics(period);
+  */
 
-  useEffect(() => {
-    fetchAnalytics(selectedPeriod);
-  }, [selectedPeriod, fetchAnalytics]);
+  const [selectedPeriod, setSelectedPeriod] = useState('month');
+
+  const handlePeriodChange = (newPeriod) => {
+    setSelectedPeriod(newPeriod);
+    // CHANGE: Call the function passed down from the parent
+    if (fetchAnalytics) {
+        fetchAnalytics(newPeriod);
+    }
+  };
 
   const periods = [
-    { value: 'week', label: '7 Days' },
-    { value: 'month', label: '30 Days' },
-    { value: 'quarter', label: '3 Months' },
-    { value: 'year', label: '1 Year' }
+    { value: 'week', label: 'Week' },
+    { value: 'month', label: 'Month' },
+    { value: 'quarter', label: 'Quarter' },
+    { value: 'year', label: 'Year' }
   ];
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center h-64">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -241,38 +255,59 @@ const ListAnalytics = () => {
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <div className="text-red-400 mb-2">Failed to load analytics</div>
+      <div className="flex items-center justify-center h-64 text-red-400">
+        <AlertCircle className="mr-2" size={20} />
+        {error}
+      </div>
+    );
+  }
+  
+  // CHANGE: Check the analytics prop for data
+  if (!analytics || Object.keys(analytics).length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+        <BarChart3 size={48} className="mb-4 opacity-50" />
+        <h3 className="text-lg font-medium mb-2">No Analytics Data Available</h3>
+        <p className="text-sm text-center">Create some lists and add items to see your analytics</p>
         <button 
           onClick={() => fetchAnalytics(selectedPeriod)}
-          className="text-cyan-400 hover:text-cyan-300"
+          className="mt-4 px-4 py-2 bg-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/30 transition-colors"
         >
-          Try again
+          Refresh Analytics
         </button>
       </div>
     );
   }
 
-  const summary = analytics?.summary || {};
-  const productivity = analytics?.productivity || {};
-  const insights = analytics?.insights || [];
+  // CHANGE: Derive constants from the analytics prop
+  const { summary, completion_trends, list_types, insights } = analytics;
+
+  const transformCategoryData = (categoryData) => {
+    if (!categoryData || typeof categoryData !== 'object') return [];
+    return Object.entries(categoryData).map(([key, value]) => ({
+        category: key.charAt(0).toUpperCase() + key.slice(1),
+        count: value
+    }));
+  };
+
+  const listTypesForChart = transformCategoryData(analytics.category_breakdown);
 
   return (
     <div className="space-y-8 animate-slide-up">
       {/* Period Selector */}
       <div className="flex justify-center">
         <div className="flex gap-1 bg-slate-800/50 p-1 rounded-xl">
-          {periods.map(period => (
+          {periods.map(p => (
             <button
-              key={period.value}
-              onClick={() => setSelectedPeriod(period.value)}
+              key={p.value}
+              onClick={() => handlePeriodChange(p.value)}
               className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                selectedPeriod === period.value
+                selectedPeriod === p.value
                   ? 'bg-cyan-600 text-white shadow-lg'
                   : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
               }`}
             >
-              {period.label}
+              {p.label}
             </button>
           ))}
         </div>
@@ -283,23 +318,23 @@ const ListAnalytics = () => {
         <AnalyticsCard
           icon={ListChecks}
           title="Total Lists"
-          value={summary.total_lists || 0}
-          subtitle={`${summary.active_lists || 0} active`}
+          value={analytics.total_lists || 0}
+          subtitle={`${analytics.active_lists || 0} active`}
           color="cyan"
         />
         
         <AnalyticsCard
           icon={CheckCircle}
           title="Completion Rate"
-          value={`${(summary.average_completion || 0).toFixed(1)}%`}
-          subtitle={`${summary.completed_items || 0} items done`}
+          value={`${ analytics.completion_rate || 0}%`}
+          subtitle={`${analytics.completed_items || 0} items done`}
           color="green"
         />
         
         <AnalyticsCard
           icon={Zap}
           title="Productivity Score"
-          value={productivity.productivity_score?.toFixed(0) || 0}
+          value={analytics.productivity_score?.toFixed(0) || 0}
           subtitle="Based on completion speed"
           color="purple"
         />
@@ -307,8 +342,8 @@ const ListAnalytics = () => {
         <AnalyticsCard
           icon={Target}
           title="Total Items"
-          value={summary.total_items || 0}
-          subtitle={`${summary.completed_items || 0} completed`}
+          value={analytics.total_items || 0}
+          subtitle={`${analytics.completed_items || 0} completed`}
           color="orange"
         />
       </div>
@@ -327,7 +362,7 @@ const ListAnalytics = () => {
             </div>
           </div>
           
-          <CompletionChart trends={analytics?.completion_trends || []} />
+          <CompletionChart trends={analytics.completion_trends || []} />
         </div>
 
         {/* List Types Breakdown */}
@@ -342,12 +377,12 @@ const ListAnalytics = () => {
             </div>
           </div>
           
-          <ListTypeBreakdown types={analytics?.list_types || []} />
+          <ListTypeBreakdown types={listTypesForChart} />
         </div>
       </div>
 
       {/* Insights */}
-      {insights.length > 0 && (
+      {insights && insights.length > 0 && (
         <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border border-slate-700/50">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-gradient-to-br from-yellow-500/20 to-orange-500/20 rounded-xl">

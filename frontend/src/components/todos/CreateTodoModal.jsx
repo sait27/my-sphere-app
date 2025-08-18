@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Flag, Target, Clock, Plus } from 'lucide-react';
+import { X, Calendar, Flag, Target, Clock, Plus, Tag, Paperclip, FileText } from 'lucide-react';
 
 const CreateTodoModal = ({ isOpen, onClose, onSubmit, goals = [] }) => {
   const [formData, setFormData] = useState({
@@ -9,8 +9,13 @@ const CreateTodoModal = ({ isOpen, onClose, onSubmit, goals = [] }) => {
     priority: 'medium',
     due_date: '',
     goal: '',
-    estimated_hours: ''
+    estimated_hours: '',
+    category: '',
+    notes: '',
+    attachments: []
   });
+  
+  const fileInputRef = useRef(null);
 
   const [errors, setErrors] = useState({});
 
@@ -49,7 +54,10 @@ const CreateTodoModal = ({ isOpen, onClose, onSubmit, goals = [] }) => {
       priority: 'medium',
       due_date: '',
       goal: '',
-      estimated_hours: ''
+      estimated_hours: '',
+      category: '',
+      notes: '',
+      attachments: []
     });
     setErrors({});
     onClose();
@@ -60,6 +68,33 @@ const CreateTodoModal = ({ isOpen, onClose, onSubmit, goals = [] }) => {
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      // For now, we'll just store the file names
+      // In a real app, you would handle file uploads to a server
+      const newAttachments = files.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        // In a real implementation, you would upload the file and store the URL
+        url: URL.createObjectURL(file)
+      }));
+      
+      setFormData(prev => ({
+        ...prev,
+        attachments: [...prev.attachments, ...newAttachments]
+      }));
+    }
+  };
+
+  const removeAttachment = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      attachments: prev.attachments.filter((_, i) => i !== index)
+    }));
   };
 
   return (
@@ -186,6 +221,89 @@ const CreateTodoModal = ({ isOpen, onClose, onSubmit, goals = [] }) => {
                   min="0"
                   step="0.5"
                 />
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <Tag className="inline w-4 h-4 mr-1" />
+                  Category
+                </label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => handleChange('category', e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                >
+                  <option value="">No category</option>
+                  <option value="work">Work</option>
+                  <option value="personal">Personal</option>
+                  <option value="health">Health</option>
+                  <option value="education">Education</option>
+                  <option value="finance">Finance</option>
+                  <option value="social">Social</option>
+                  <option value="home">Home</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <FileText className="inline w-4 h-4 mr-1" />
+                  Notes
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => handleChange('notes', e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+                  placeholder="Add additional notes..."
+                  rows={3}
+                />
+              </div>
+
+              {/* Attachments */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <Paperclip className="inline w-4 h-4 mr-1" />
+                  Attachments
+                </label>
+                <div className="space-y-2">
+                  {formData.attachments.length > 0 && (
+                    <div className="space-y-2 mb-3">
+                      {formData.attachments.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-slate-700/30 p-2 rounded-lg">
+                          <div className="flex items-center gap-2 text-sm text-slate-300 truncate">
+                            <Paperclip size={14} />
+                            <span className="truncate">{file.name}</span>
+                            <span className="text-xs text-slate-400">{(file.size / 1024).toFixed(1)} KB</span>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => removeAttachment(index)}
+                            className="text-slate-400 hover:text-red-400 p-1"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    multiple
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current.click()}
+                    className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-slate-300 hover:bg-slate-600/50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Paperclip size={16} />
+                    Add Attachment
+                  </button>
+                </div>
               </div>
 
               {/* Actions */}

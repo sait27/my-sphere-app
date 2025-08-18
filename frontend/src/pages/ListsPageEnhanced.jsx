@@ -3,21 +3,31 @@
 import React, { useState, useEffect } from 'react';
 import { useLists } from '../hooks/useLists';
 import { useListAnalytics } from '../hooks/useListAnalytics';
+import { useListSharing } from '../hooks/useListSharing';
 import SmartFilters from '../components/lists/SmartFilters';
 import ListInsights from '../components/lists/ListInsights';
 import ListifyDashboard from '../components/lists/ListifyDashboard';
 import CreateListFromTemplateModal from '../components/modals/CreateListFromTemplateModal';
 import EditListModal from '../components/modals/EditListModal';
+import ListAnalytics from '../components/lists/ListAnalytics';
+import ListTemplates from '../components/lists/ListTemplates';
+import EnhancedListCard from '../components/lists/EnhancedListCard';
 import ListItemsModal from '../components/lists/ListItemsModal';
 import ShareListModal from '../components/modals/ShareListModal';
 import CreateListModal from '../components/modals/CreateListModal';
+import ConfirmModal from '../components/modals/ConfirmModal';
+import InputModal from '../components/modals/InputModal';
+import ListShareView from '../components/lists/ListShareView';
 import { 
   ListChecks, Plus, Search, Filter, Trash2, 
   CheckCircle, BarChart3, FileText, Users,
-  Download, Archive, Grid3X3,
-  List as ListIcon, Target
+  Download, Archive, Grid3x3,
+  List as ListIcon, Target, Edit3, Settings,
+  Calendar, Clock, Star, Heart, Bookmark,
+  Share2, Copy, Eye, EyeOff, Lock, Unlock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import apiClient from '../api/axiosConfig';
 
 const ListsPageEnhanced = () => {
   const [activeTab, setActiveTab] = useState('lists');
@@ -26,11 +36,18 @@ const ListsPageEnhanced = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showItemsModal, setShowItemsModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showInsights, setShowInsights] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [showSmartFilters, setShowSmartFilters] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedListForShare, setSelectedListForShare] = useState(null);
   const [selectedListForItems, setSelectedListForItems] = useState(null);
+  const [selectedListForEdit, setSelectedListForEdit] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [bulkMode, setBulkMode] = useState(false);
   const [isShoppingMode, setIsShoppingMode] = useState(false);
   const [itemPrices, setItemPrices] = useState({});
+  const [isExporting, setIsExporting] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const [inputModal, setInputModal] = useState({ isOpen: false, title: '', message: '', onSubmit: () => {}, initialValue: '' });
 
@@ -64,8 +81,31 @@ const ListsPageEnhanced = () => {
     setSelectedList
   } = useLists();
 
+  // Use analytics hook for insights
+  const {
+    analytics,
+    insights,
+    loading: analyticsLoading,
+    error: analyticsError,
+    fetchAnalytics
+  } = useListAnalytics();
+  
+  // Use sharing hook for shared lists
+  const {
+    sharedLists,
+    sharedWithMe,
+    loading: sharingLoading,
+    error: sharingError,
+    fetchMySharedLists,
+    fetchSharedWithMe
+  } = useListSharing();
+
+  // Remove the incorrect setLists function since useLists doesn't provide it
+  // The component should use fetchLists() to refresh data instead
+
   const tabs = [
     { id: 'lists', label: 'My Lists', icon: ListChecks },
+    { id: 'shared', label: 'Shared Lists', icon: Users },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'templates', label: 'Templates', icon: FileText }
   ];
@@ -98,10 +138,97 @@ const ListsPageEnhanced = () => {
     { value: 'completion_percentage', label: 'Least Complete' }
   ];
 
-  // Fetch lists on component mount and when filters/sort change
+  // Fetch lists and analytics on component mount and when filters/sort change
   useEffect(() => {
-    fetchLists();
+    console.log('ListsPageEnhanced: useEffect triggered with filters:', filters, 'sortBy:', sortBy);
+    const timeoutId = setTimeout(() => {
+      console.log('ListsPageEnhanced: Calling fetchLists...');
+      fetchLists();
+    }, filters.search ? 300 : 0); // Only debounce when there's search text
+    
+    return () => clearTimeout(timeoutId);
   }, [filters, sortBy, fetchLists]);
+  
+  // Fetch shared lists when activeTab changes to 'shared'
+  useEffect(() => {
+    if (activeTab === 'shared') {
+      console.log('ListsPageEnhanced: Fetching shared lists...');
+      fetchSharedWithMe();
+      fetchMySharedLists();
+    }
+  }, [activeTab, fetchSharedWithMe, fetchMySharedLists]);
+
+  // Fetch analytics only on mount (not on every filter change)
+  useEffect(() => {
+    console.log('ListsPageEnhanced: Fetching analytics...');
+    fetchAnalytics();
+  }, [lists]);
+  
+  // Fetch shared lists when the shared tab is active
+  useEffect(() => {
+    if (activeTab === 'shared') {
+      console.log('ListsPageEnhanced: Fetching shared lists...');
+      fetchSharedLists();
+      fetchMySharedLists();
+    }
+  }, [activeTab, fetchSharedLists, fetchMySharedLists]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only trigger if not typing in an input field
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 'n':
+            e.preventDefault();
+            setShowCreateModal(true);
+            break;
+          case 'f':
+            e.preventDefault();
+            document.querySelector('input[placeholder*="Search"]')?.focus();
+            break;
+          case 'k':
+            e.preventDefault();
+            setShowFilters(!showFilters);
+            break;
+        }
+      }
+      
+      // Escape key to close modals
+      if (e.key === 'Escape') {
+        setShowCreateModal(false);
+        setShowEditModal(false);
+        setShowItemsModal(false);
+        setShowFilters(false);
+        setShowInsights(false);
+        setShowDashboard(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showFilters]);
+
+  const handleToggleFavorite = async (list) => {
+    try {
+      await updateList(list.id, { is_favorite: !list.is_favorite });
+      toast.success(list.is_favorite ? 'Removed from favorites' : 'Added to favorites');
+    } catch (error) {
+      toast.error('Failed to update favorite status');
+    }
+  };
+
+  // FIX: Add handler for toggling the archive status
+  const handleToggleArchive = async (list) => {
+    try {
+      await updateList(list.id, { is_archived: !list.is_archived });
+      toast.success(list.is_archived ? 'List unarchived' : 'List archived');
+    } catch (error) {
+      toast.error('Failed to update archive status');
+    }
+  };
 
   // Handle list creation
   const handleCreateList = async (listData) => {
@@ -149,6 +276,27 @@ const ListsPageEnhanced = () => {
   const handleShareList = (list) => {
     setSelectedListForShare(list);
     setShowShareModal(true);
+  };
+
+  // Handle list editing
+  const handleEditList = (list) => {
+    setSelectedListForEdit(list);
+    setShowEditModal(true);
+  };
+
+  // Handle edit list submission
+  const handleEditListSubmit = async (listData) => {
+    try {
+      if (selectedListForEdit) {
+        await updateList(selectedListForEdit.id, listData);
+        setShowEditModal(false);
+        setSelectedListForEdit(null);
+        toast.success('List updated successfully!');
+      }
+    } catch (error) {
+      console.error('Failed to update list:', error);
+      toast.error('Failed to update list');
+    }
   };
 
   // Handle bulk operations
@@ -223,8 +371,7 @@ const ListsPageEnhanced = () => {
       onConfirm: async () => {
         try {
           const expenseText = `Shopping for '${selectedList.name}' list, total was ${total.toFixed(2)}`;
-          // This would call the expenses API
-          // await apiClient.post('/expenses/', { text: expenseText });
+          await apiClient.post('/expenses/', { text: expenseText });
           toast.success("Expense logged from your shopping trip!");
           setIsShoppingMode(false);
           setItemPrices({});
@@ -254,35 +401,64 @@ const ListsPageEnhanced = () => {
   return (
     <div className="min-h-screen">
       <div className="animate-slide-up">
-        {/* Enhanced Header */}
-        <div className="mb-8">
-          <h2 className="text-4xl font-bold mb-3 text-white bg-gradient-to-r from-white via-cyan-100 to-white bg-clip-text text-transparent">
-            Smart Lists
-          </h2>
-          <p className="text-slate-400 text-lg">Organize your tasks and shopping with AI-powered lists</p>
+        {/* Clean Header with Stats */}
+        <div className="relative mb-12">
+          {/* Main Title */}
+          <div className="text-center mb-8">
+            <h1 className="text-5xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600">
+              Smart Lists
+            </h1>
+            <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
+              Organize your world with AI-powered list management
+            </p>
+          </div>
           
-          {/* Quick Stats */}
-          <div className="flex gap-6 mt-4 text-sm">
-            <div className="flex items-center gap-2 text-slate-400">
-              <ListChecks size={16} />
-              <span>{stats.total} total</span>
+          
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+            <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-xl rounded-2xl p-4 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 group">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-white group-hover:text-cyan-400 transition-colors">{stats.total}</p>
+                  <p className="text-sm text-slate-400">Total Lists</p>
+                </div>
+                <ListChecks className="text-cyan-400 group-hover:scale-110 transition-transform" size={24} />
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-green-400">
-              <CheckCircle size={16} />
-              <span>{stats.completed} completed</span>
+            
+            <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-xl rounded-2xl p-4 border border-slate-700/50 hover:border-green-500/50 transition-all duration-300 group">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-white group-hover:text-green-400 transition-colors">{stats.completed}</p>
+                  <p className="text-sm text-slate-400">Completed</p>
+                </div>
+                <CheckCircle className="text-green-400 group-hover:scale-110 transition-transform" size={24} />
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-blue-400">
-              <Target size={16} />
-              <span>{stats.active} active</span>
+            
+            <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-xl rounded-2xl p-4 border border-slate-700/50 hover:border-blue-500/50 transition-all duration-300 group">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-white group-hover:text-blue-400 transition-colors">{stats.active}</p>
+                  <p className="text-sm text-slate-400">Active</p>
+                </div>
+                <Target className="text-blue-400 group-hover:scale-110 transition-transform" size={24} />
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-purple-400">
-              <Users size={16} />
-              <span>{stats.shared} shared</span>
+            
+            <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-xl rounded-2xl p-4 border border-slate-700/50 hover:border-purple-500/50 transition-all duration-300 group">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors">{stats.shared}</p>
+                  <p className="text-sm text-slate-400">Shared</p>
+                </div>
+                <Users className="text-purple-400 group-hover:scale-110 transition-transform" size={24} />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Horizontal Tab Navigation */}
         <div className="mb-8">
           <div className="flex gap-2 bg-slate-800/50 p-2 rounded-xl w-fit">
             {tabs.map(tab => {
@@ -307,210 +483,411 @@ const ListsPageEnhanced = () => {
 
         {/* Tab Content */}
         {activeTab === 'lists' && (
-          <div className="space-y-8">
-            {/* Controls Bar */}
-            <div className="bg-gradient-to-r from-slate-800/50 to-slate-900/50 backdrop-blur-xl p-4 rounded-2xl border border-slate-700/50">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  {/* Create List Button */}
+          <> {/* <-- FIX: Added opening React Fragment tag */}
+            <div className="space-y-10">
+              {/* Horizontal Action Bar */}
+              <div className="flex items-center justify-between gap-4 mb-8">
+                {/* Left - Create Button */}
+                <div>
                   <button
                     onClick={() => setShowCreateModal(true)}
-                    className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg hover:shadow-cyan-500/25 flex items-center gap-2"
+                    className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                    title="Create New List (Ctrl+N)"
                   >
                     <Plus size={18} />
-                    Create List
+                    Create New List
                   </button>
+                </div>
 
-                  {/* Search */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
-                    <input
-                      type="text"
-                      placeholder="Search lists..."
-                      value={filters.search}
-                      onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                      className="pl-10 pr-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200 w-64"
-                    />
-                  </div>
+                {/* Center - Search Bar */}
+                <div className="relative flex-1 max-w-lg">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Search your lists... (Ctrl+F)"
+                    value={filters.search}
+                    onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200"
+                  />
+                </div>
 
-                  {/* Filters Toggle */}
+                {/* Right Side - Action Buttons */}
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowFilters(!showFilters)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors whitespace-nowrap ${
                       showFilters ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                     }`}
+                    title="Toggle Filters (Ctrl+K)"
                   >
-                    <Filter size={18} />
+                    <Filter size={16} />
                     Filters
                   </button>
+                    
+                    <button
+                      onClick={() => setShowInsights(!showInsights)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors whitespace-nowrap ${
+                        showInsights ? 'bg-green-500/20 text-green-400' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                      }`}
+                    >
+                      <Eye size={16} />
+                      Insights
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowDashboard(!showDashboard)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors whitespace-nowrap ${
+                        showDashboard ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                      }`}
+                    >
+                      <BarChart3 size={16} />
+                      Dashboard
+                    </button>
 
-                  {/* View Mode Toggle */}
-                  <div className="flex bg-slate-700/50 rounded-lg p-1">
-                    <button
-                      onClick={() => setViewMode('grid')}
-                      className={`p-2 rounded transition-colors ${
-                        viewMode === 'grid' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <Grid3X3 size={16} />
-                    </button>
-                    <button
-                      onClick={() => setViewMode('list')}
-                      className={`p-2 rounded transition-colors ${
-                        viewMode === 'list' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <ListIcon size={16} />
-                    </button>
+                    {/* View Mode Toggle */}
+                    <div className="flex bg-slate-700/50 rounded-lg p-1 ml-2">
+                      <button
+                        onClick={() => setViewMode('grid')}
+                        className={`p-2 rounded transition-colors ${
+                          viewMode === 'grid' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Grid View"
+                      >
+                        <Grid3x3 size={16} />
+                      </button>
+                      <button
+                        onClick={() => setViewMode('list')}
+                        className={`p-2 rounded transition-colors ${
+                          viewMode === 'list' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="List View"
+                      >
+                        <ListIcon size={16} />
+                      </button>
+                    </div>
+                    
+                    {/* Quick Actions */}
+                    <div className="flex gap-1 ml-2">
+                      <button
+                        onClick={() => setShowTemplateModal(true)}
+                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+                        title="Create from Template"
+                      >
+                        <Copy size={16} />
+                      </button>
+                      <button
+                        onClick={() => setBulkMode(!bulkMode)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          bulkMode ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                        }`}
+                        title="Bulk Select"
+                      >
+                        <CheckCircle size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleExport('csv')}
+                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+                        title="Export Lists"
+                      >
+                        <Download size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  {/* Bulk Mode Toggle */}
-                  <button
-                    onClick={() => setBulkMode(!bulkMode)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                      bulkMode ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                    }`}
-                  >
-                    <CheckCircle size={18} />
-                    Bulk Select
-                  </button>
+                {/* Clean Filters Panel */}
+                {showFilters && (
+                  <div className="border-t border-slate-700/30 pt-6 mt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                      {/* Filter Dropdowns */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">List Type</label>
+                        <select
+                          value={filters.list_type}
+                          onChange={(e) => setFilters(prev => ({ ...prev, list_type: e.target.value }))}
+                          className="w-full px-4 py-3 bg-slate-800/60 border border-slate-600/40 rounded-xl text-white focus:outline-none focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200"
+                        >
+                          {listTypes.map(type => (
+                            <option key={type.value} value={type.value}>{type.label}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                  {/* Export */}
-                  <button
-                    onClick={() => handleExport('csv')}
-                    className="flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
-                  >
-                    <Download size={18} />
-                    Export
-                  </button>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Priority</label>
+                        <select
+                          value={filters.priority}
+                          onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+                          className="w-full px-4 py-3 bg-slate-800/60 border border-slate-600/40 rounded-xl text-white focus:outline-none focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200"
+                        >
+                          {priorities.map(priority => (
+                            <option key={priority.value} value={priority.value}>{priority.label}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                </div>
-              </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-300">Sort By</label>
+                        <select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value)}
+                          className="w-full px-4 py-3 bg-slate-800/60 border border-slate-600/40 rounded-xl text-white focus:outline-none focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-200"
+                        >
+                          {sortOptions.map(option => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </div>
 
-              {/* Filters Panel */}
-              {showFilters && (
-                <div className="flex gap-4 pt-4 border-t border-slate-700/50 animate-slide-down">
-                  <select
-                    value={filters.list_type}
-                    onChange={(e) => setFilters(prev => ({ ...prev, list_type: e.target.value }))}
-                    className="px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-cyan-500"
-                  >
-                    {listTypes.map(type => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={filters.priority}
-                    onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
-                    className="px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-cyan-500"
-                  >
-                    {priorities.map(priority => (
-                      <option key={priority.value} value={priority.value}>{priority.label}</option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="px-3 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-cyan-500"
-                  >
-                    {sortOptions.map(option => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-
-                  <label className="flex items-center gap-2 text-slate-400">
-                    <input
-                      type="checkbox"
-                      checked={filters.is_archived}
-                      onChange={(e) => setFilters(prev => ({ ...prev, is_archived: e.target.checked }))}
-                      className="rounded"
+                      <div className="space-y-4">
+                        <label className="text-sm font-medium text-slate-300">Options</label>
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-3 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={filters.is_archived}
+                              onChange={(e) => setFilters(prev => ({ ...prev, is_archived: e.target.checked }))}
+                              className="w-5 h-5 rounded-lg border-2 border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500/20 transition-all duration-200"
+                            />
+                            <div className="flex items-center gap-2 text-slate-400 group-hover:text-white transition-colors">
+                              {filters.is_archived ? <EyeOff size={16} /> : <Archive size={16} />}
+                              <span>Show Archived</span>
+                            </div>
+                          </label>
+                          
+                          <label className="flex items-center gap-3 cursor-pointer group">
+                            <input
+                              type="checkbox"
+                              checked={filters.is_favorite || false}
+                              onChange={(e) => setFilters(prev => ({ ...prev, is_favorite: e.target.checked }))}
+                              className="w-5 h-5 rounded-lg border-2 border-slate-600 bg-slate-800 text-yellow-500 focus:ring-yellow-500/20 transition-all duration-200"
+                            />
+                            <div className="flex items-center gap-2 text-slate-400 group-hover:text-white transition-colors">
+                              <Star size={16} className={filters.is_favorite ? 'text-yellow-400 fill-current' : ''} />
+                              <span>Favorites Only</span>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Smart Filters Panel */}
+                {showSmartFilters && (
+                  <div className="pt-4 border-t border-slate-700/50 animate-slide-down">
+                    <SmartFilters 
+                      filters={filters}
+                      onFiltersChange={setFilters}
+                      lists={lists}
                     />
-                    Show Archived
-                  </label>
-                </div>
-              )}
+                  </div>
+                )}
+                
+                {/* Insights Panel */}
+                {showInsights && (
+                  <div className="pt-4 border-t border-slate-700/50 animate-slide-down">
+                    <ListInsights 
+                      insights={insights}
+                      loading={analyticsLoading}
+                      error={analyticsError}
+                    />
+                  </div>
+                )}
 
-              {/* Bulk Actions */}
-              {bulkMode && hasSelectedItems && (
-                <div className="flex gap-2 pt-4 border-t border-slate-700/50 animate-slide-down">
-                  <button
-                    onClick={() => handleBulkOperation('archive_lists')}
-                    className="flex items-center gap-2 px-3 py-2 bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 rounded-lg transition-colors"
-                  >
-                    <Archive size={16} />
-                    Archive ({selectedItems.size})
-                  </button>
-                  <button
-                    onClick={() => handleBulkOperation('bulk_delete_items')}
-                    className="flex items-center gap-2 px-3 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={16} />
-                    Delete ({selectedItems.size})
-                  </button>
-                  <button
-                    onClick={clearSelections}
-                    className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
-                  >
-                    Clear Selection
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Lists Display */}
-            {lists.length > 0 ? (
-              <div className={viewMode === 'grid' 
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                : "space-y-4"
-              }>
-                {lists.map((list, index) => (
-                  <ListCard
-                    key={list.id}
-                    list={list}
-                    index={index}
-                    viewMode={viewMode}
-                    bulkMode={bulkMode}
-                    isSelected={selectedItems.has(list.id)}
-                    onSelect={() => toggleItemSelection(list.id)}
-                    onEdit={(id, data) => updateList(id, data)}
-                    onDelete={handleDeleteList}
-                    onDuplicate={handleDuplicateList}
-                    onShare={handleShareList}
-                    onViewDetails={(list) => {
-                      setSelectedListForItems(list);
-                      fetchListDetails(list.id);
-                    }}
-                  />
-                ))}
+                {/* Bulk Actions */}
+                {bulkMode && hasSelectedItems && (
+                  <div className="flex gap-2 pt-4 border-t border-slate-700/50 animate-slide-down">
+                    <button
+                      onClick={() => handleBulkOperation('archive_lists')}
+                      className="flex items-center gap-2 px-3 py-2 bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 rounded-lg transition-colors"
+                    >
+                      <Archive size={16} />
+                      Archive ({selectedItems.size})
+                    </button>
+                    <button
+                      onClick={() => handleBulkOperation('bulk_delete_items')}
+                      className="flex items-center gap-2 px-3 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={16} />
+                      Delete ({selectedItems.size})
+                    </button>
+                    <button
+                      onClick={clearSelections}
+                      className="px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
+                    >
+                      Clear Selection
+                    </button>
+                  </div>
+                )}
               </div>
-            ) : (
-              <EmptyListsState onCreateList={() => setShowCreateModal(true)} />
-            )}
-          </div>
+
+              {/* Dashboard View */}
+              {showDashboard && (
+                <div className="mb-8">
+                  <ListifyDashboard 
+                    lists={lists}
+                    analytics={analytics}
+                    insights={insights}
+                    loading={loading || analyticsLoading}
+                    onCreateList={() => setShowCreateModal(true)}
+                  />
+                </div>
+              )}
+              
+              {/* Enhanced Lists Display */}
+              {lists.length > 0 ? (
+                <div className={`transition-all duration-500 ${
+                  viewMode === 'grid' 
+                    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                    : "space-y-6"
+                }`}>
+                  {lists.map((list,index) => {
+                    const isPrivate = list.visibility === 'private';
+                    const isShared = list.is_shared;
+                    const isFavorite = list.is_favorite;
+                    const isBookmarked = list.is_bookmarked;
+                    
+                    return (
+                      <div 
+                        key={list.id} 
+                        className="relative group transform transition-all duration-300 hover:scale-[1.02] animate-fade-in"
+                        style={{ animationDelay: `${index * 100}ms` }}
+                      >
+                        {/* Subtle Status Badge */}
+                        <div className="absolute -top-2 -right-2 z-20 flex gap-1">
+                          {isFavorite && (
+                            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full p-1.5 shadow-lg">
+                              <Star size={12} className="text-white fill-current" />
+                            </div>
+                          )}
+                          {isShared && (
+                            <div className="bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full p-1.5 shadow-lg">
+                              <Users size={12} className="text-white" />
+                            </div>
+                          )}
+                          {isPrivate && (
+                            <div className="bg-gradient-to-r from-slate-500 to-slate-600 rounded-full p-1.5 shadow-lg">
+                              <Lock size={12} className="text-white" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Enhanced List Card */}
+                        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl border border-slate-700/50 hover:border-cyan-500/30 transition-all duration-300 group-hover:shadow-2xl group-hover:shadow-cyan-500/10">
+                          <EnhancedListCard
+                            key={list.id}
+                            list={list}
+                            isSelected={selectedItems.has(list.id)}
+                            onEdit={handleEditList}
+                            onDelete={handleDeleteList}
+                            onDuplicate={handleDuplicateList}
+                            onShare={handleShareList}
+                            onToggleFavorite={handleToggleFavorite}
+                            onToggleArchive={handleToggleArchive}
+                            onViewDetails={async (list) => {
+                              try {
+                                setSelectedListForItems(list);
+                                setShowItemsModal(true);
+                                const updatedList = await fetchListDetails(list.id);
+                                if (updatedList) {
+                                  setSelectedListForItems(updatedList);
+                                }
+                              } catch (error) {
+                                console.error('Failed to fetch list details:', error);
+                                toast.error('Failed to load list items');
+                              }
+                            }}
+                          />
+                          
+                          {/* Floating Quick Actions */}
+                          <div className="absolute bottom-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                            <div className="flex gap-2 bg-slate-800/90 backdrop-blur-xl rounded-2xl p-2 border border-slate-600/30 shadow-xl">
+                              <button
+                                onClick={() => handleEditList(list)}
+                                className="p-2 bg-cyan-500/20 hover:bg-cyan-500/40 rounded-xl text-cyan-400 hover:text-white transition-all duration-200 hover:scale-110"
+                                title="Edit List"
+                              >
+                                <Edit3 size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleShareList(list)}
+                                className="p-2 bg-blue-500/20 hover:bg-blue-500/40 rounded-xl text-blue-400 hover:text-white transition-all duration-200 hover:scale-110"
+                                title="Share List"
+                              >
+                                <Share2 size={14} />
+                              </button>
+                              <button
+                                onClick={() => console.log('View insights for list:', list.id)}
+                                className="p-2 bg-green-500/20 hover:bg-green-500/40 rounded-xl text-green-400 hover:text-white transition-all duration-200 hover:scale-110"
+                                title="View Insights"
+                              >
+                                <BarChart3 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <EmptyListsState onCreateList={() => setShowCreateModal(true)} />
+              )}
+          </> // <-- FIX: Added closing React Fragment tag
         )}
 
-        {activeTab === 'analytics' && <ListAnalytics />}
+        {activeTab === 'shared' && (
+          <ListShareView 
+            sharedLists={sharedWithMe}
+            mySharedLists={sharedLists}
+            loading={sharingLoading}
+            error={sharingError}
+            onRefresh={() => {
+              fetchSharedWithMe();
+              fetchMySharedLists();
+            }}
+          />
+        )}
+        {activeTab === 'analytics' && (
+          <ListAnalytics 
+            analytics={analytics} 
+            loading={analyticsLoading} 
+            error={analyticsError}
+            fetchAnalytics={fetchAnalytics} // Pass the function to allow period changes
+          />
+        )}
         {activeTab === 'templates' && <ListTemplates onCreateFromTemplate={fetchLists} />}
 
-        {/* Create List Modal */}
-        <CreateListModal 
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onCreate={handleCreateList}
+        {/* Edit List Modal */}
+        <EditListModal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedListForEdit(null);
+          }}
+          onSubmit={handleEditListSubmit}
+          initialData={selectedListForEdit}
         />
 
         {/* List Items Modal */}
-        {selectedListForItems && (
-          <ListItemsModal
-            selectedList={selectedListForItems}
-            isOpen={!!selectedListForItems}
-            onClose={() => setSelectedListForItems(null)}
-          />
-        )}
+        <ListItemsModal
+          selectedList={selectedListForItems}
+          isOpen={showItemsModal && !!selectedListForItems}
+          onClose={() => {
+            setSelectedListForItems(null);
+            setShowItemsModal(false);
+          }}
+          onListUpdated={(updatedList) => {
+            // Update the selectedListForItems with fresh data
+            setSelectedListForItems(updatedList);
+            // Refresh the lists to get updated data
+            fetchLists();
+          }}
+          updateItem={updateItem}
+          deleteItem={deleteItem}
+          addItemsWithAI={addItemsWithAI}
+        />
 
         {/* Share List Modal */}
         <ShareListModal
@@ -520,6 +897,13 @@ const ListsPageEnhanced = () => {
             setSelectedListForShare(null);
           }}
           list={selectedListForShare}
+        />
+
+        {/* Create List Modal */}
+        <CreateListModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateList}
         />
 
         {/* Confirm Modal */}
@@ -537,6 +921,17 @@ const ListsPageEnhanced = () => {
             onClose={() => setInputModal({ ...inputModal, isOpen: false })}
           />
         )}
+        
+        {/* Create From Template Modal */}
+        <CreateListFromTemplateModal
+          isOpen={showTemplateModal}
+          onClose={() => setShowTemplateModal(false)}
+          onSubmit={(templateData) => {
+            console.log('Creating list from template:', templateData);
+            setShowTemplateModal(false);
+            fetchLists(); // Refresh lists after creation
+          }}
+        />
       </div>
     </div>
   );
@@ -546,17 +941,34 @@ const ListsPageEnhanced = () => {
 
 const EmptyListsState = ({ onCreateList }) => {
   return (
-    <div className="text-center py-16">
-      <div className="mb-6">
-        <ListChecks size={64} className="mx-auto text-slate-500 mb-4" />
-        <h3 className="text-xl font-semibold text-white mb-2">No Lists Yet</h3>
-        <p className="text-slate-400 mb-6">Create your first list to get started with organizing your tasks</p>
+    <div className="relative flex flex-col items-center justify-center py-16 px-6">
+      {/* Simplified Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-800/10 to-slate-900/10 rounded-2xl"></div>
+      
+      {/* Content */}
+      <div className="relative z-10 text-center max-w-sm">
+        {/* Simple Icon */}
+        <div className="mb-6 flex justify-center">
+          <div className="w-16 h-16 bg-slate-700/50 rounded-2xl flex items-center justify-center border border-slate-600/30">
+            <ListChecks className="text-slate-400" size={24} />
+          </div>
+        </div>
+
+        {/* Text */}
+        <h3 className="text-xl font-semibold text-white mb-3">
+          No Lists Yet
+        </h3>
+        <p className="text-slate-400 mb-6 text-sm">
+          Create your first list to get started with smart organization
+        </p>
+
+        {/* Simple CTA Button */}
         <button
           onClick={onCreateList}
-          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg hover:shadow-cyan-500/25 flex items-center gap-2 mx-auto"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 hover:text-cyan-300 font-medium rounded-xl border border-cyan-500/30 hover:border-cyan-500/50 transition-all duration-200"
         >
-          <Plus size={20} />
-          Create Your First List
+          <Plus size={18} />
+          Create List
         </button>
       </div>
     </div>

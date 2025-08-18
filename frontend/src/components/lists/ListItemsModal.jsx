@@ -11,11 +11,15 @@ import ConfirmModal from '../modals/ConfirmModal';
 import apiClient from "../../api/axiosConfig";
 
 const ListItemsModal = ({ 
+  selectedList, 
   isOpen, 
   onClose,
-  selectedList: propSelectedList
+  onListUpdated,
+  updateItem,
+  deleteItem,
+  addItemsWithAI 
 }) => {
-  const { selectedList: hookSelectedList, addItemsWithAI, updateItem, deleteItem, fetchListDetails } = useLists();
+  const { fetchListDetails } = useLists();
   
   const [newItemText, setNewItemText] = useState('');
   const [isAddingItem, setIsAddingItem] = useState(false);
@@ -23,17 +27,158 @@ const ListItemsModal = ({
   const [editText, setEditText] = useState('');
   const [shoppingMode, setShoppingMode] = useState(false);
   const [itemPrices, setItemPrices] = useState({});
-  const [optimisticItems, setOptimisticItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(new Set());
   const [confirmModal, setConfirmModal] = useState({ isOpen: false });
 
-  // Prioritize the list passed via props. If the prop list is the same as the hook's list,
-  // merge them to get the most up-to-date data (e.g., with items from fetchListDetails).
-  const selectedList = propSelectedList
-    ? hookSelectedList?.id === propSelectedList.id
-      ? { ...propSelectedList, ...hookSelectedList } 
-      : propSelectedList
-    : hookSelectedList;
+  // Add null safety check
+  if (!selectedList && isOpen) {
+    console.warn('ListItemsModal: No selectedList provided but modal is open');
+  }
+  
+  // Always call hooks before any early returns
+  useEffect(() => {
+    if (selectedList?.id) {
+      // Reset local state when list changes
+      setLoadingItems(new Set());
+      setItemPrices({});
+      setEditingItem(null);
+      setEditText('');
+    }
+  }, [selectedList?.id]);
+
+  // ALL CALLBACKS MUST BE DEFINED BEFORE EARLY RETURNS
+  const handleAddItems = useCallback(async (e) => {
+    e.preventDefault();
+    if (!newItemText.trim() || !selectedList?.id) return;
+
+    const inputText = newItemText;
+    setNewItemText('');
+    setIsAddingItem(true);
+
+    try {
+      await addItemsWithAI(selectedList.id, inputText);
+      // Refresh the list details to get updated state with new items
+      if (selectedList?.id && onListUpdated) {
+        const updatedList = await fetchListDetails(selectedList.id);
+        if (updatedList) {
+          onListUpdated(updatedList);
+        }
+      }
+    } catch (error) {
+      // If the hook fails, restore the input text.
+      setNewItemText(inputText);
+      // The hook now displays its own error toasts.
+    } finally {
+      setIsAddingItem(false);
+    }
+  }, [newItemText, selectedList?.id, addItemsWithAI, onListUpdated, fetchListDetails]);
+
+  const handleToggleComplete = useCallback(async (item) => {
+    if (item.isOptimistic) return; // Don't allow toggle on optimistic items
+    
+    const itemId = item.id;
+    const newCompletedState = !item.is_completed;
+    
+    // Add to loading set
+    setLoadingItems(prev => new Set([...prev, itemId]));
+    
+    try {
+      await updateItem(itemId, { is_completed: newCompletedState });
+      // Refresh the list details to get updated state
+      if (selectedList?.id && onListUpdated) {
+        const updatedList = await fetchListDetails(selectedList.id);
+        if (updatedList) {
+          onListUpdated(updatedList);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating item:', error);
+    } finally {
+      // Remove from loading set
+      setLoadingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
+    }
+  }, [updateItem, selectedList, onListUpdated, fetchListDetails]);
+
+  const handleDeleteItem = useCallback(async (itemId) => {
+    try {
+      await deleteItem(itemId);
+      // Don't show success toast here - the hook handles it
+      // Refresh the list details to get updated state
+      if (selectedList?.id && onListUpdated) {
+        const updatedList = await fetchListDetails(selectedList.id);
+        if (updatedList) {
+          onListUpdated(updatedList);
+        }
+      }
+    } catch (error) {
+      // Don't show error toast here either - the hook handles it
+    }
+  }, [deleteItem, selectedList, onListUpdated, fetchListDetails]);
+
+  const handleEditItem = useCallback((item) => {
+    setEditingItem(item.id);
+    setEditText(item.name);
+  }, []);
+
+  const handleSaveEdit = useCallback(async (itemId) => {
+    if (!editText.trim()) return;
+    
+    try {
+      await updateItem(itemId, { name: editText.trim() });
+      setEditingItem(null);
+      setEditText('');
+      // Don't show toast here - the hook handles it
+      // Refresh the list details to get updated state
+      if (selectedList?.id && onListUpdated) {
+        const updatedList = await fetchListDetails(selectedList.id);
+        if (updatedList) {
+          onListUpdated(updatedList);
+        }
+      }
+    } catch (error) {
+      // Don't show error toast here either - the hook handles it
+    }
+  }, [editText, updateItem, selectedList, onListUpdated, fetchListDetails]);
+
+  const calculateShoppingTotal = useCallback(() => {
+    return Object.values(itemPrices).reduce((total, price) => 
+      total + parseFloat(price || 0), 0
+    );
+  }, [itemPrices]);
+
+  const handleFinishShopping = useCallback(async () => {
+    const total = calculateShoppingTotal();
+    if (total <= 0) {
+      setShoppingMode(false);
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      title: "Log Expense",
+      message: `Your total is ₹${total.toFixed(2)}. Log this as a new expense?`,
+      onConfirm: async () => {
+        try {
+          const expenseText = `Shopping for '${selectedList?.name || 'Unknown'}' list, total was ${total.toFixed(2)}`;
+          await apiClient.post('/expenses/', { text: expenseText });
+          toast.success("Expense logged from your shopping trip!");
+          setShoppingMode(false);
+          setItemPrices({});
+        } catch (error) {
+          toast.error("Failed to log expense.");
+        }
+      }
+    });
+  }, [calculateShoppingTotal, selectedList?.name]);
+
+  const displayItems = selectedList?.items || [];
+  const pendingItems = displayItems.filter(item => !item.is_completed) || [];
+  const completedItems = displayItems.filter(item => item.is_completed) || [];
+  
   
   // Early return if modal is not open
   if (!isOpen) {
@@ -61,144 +206,6 @@ const ListItemsModal = ({
       </div>
     );
   }
-
-  useEffect(() => {
-    if (selectedList?.id) {
-      // Reset local state when list changes
-      setOptimisticItems([]);
-      setLoadingItems(new Set());
-      setItemPrices({});
-      setEditingItem(null);
-      setEditText('');
-    }
-  }, [selectedList?.id]);
-
-  // Combine real items with optimistic items
-  const displayItems = [...(selectedList?.items || []), ...optimisticItems];
-
-  const handleAddItems = useCallback(async (e) => {
-    e.preventDefault();
-    if (!newItemText.trim() || !selectedList?.id) return;
-
-    const tempId = `temp_${Date.now()}`;
-    const optimisticItem = {
-      id: tempId,
-      name: newItemText.trim(),
-      is_completed: false,
-      price: null,
-      quantity: null,
-      isOptimistic: true
-    };
-
-    // Add optimistic item immediately
-    setOptimisticItems(prev => [...prev, optimisticItem]);
-    const inputText = newItemText;
-    setNewItemText('');
-    setIsAddingItem(true);
-
-    try {
-      await addItemsWithAI(selectedList.id, inputText);
-      // Clear optimistic item after successful addition
-      setOptimisticItems(prev => prev.filter(item => item.id !== tempId));
-    } catch (error) {
-      // Remove optimistic item on error and restore input
-      setOptimisticItems(prev => prev.filter(item => item.id !== tempId));
-      setNewItemText(inputText);
-      console.error('Error adding items:', error);
-    } finally {
-      setIsAddingItem(false);
-    }
-  }, [newItemText, selectedList?.id, addItemsWithAI]);
-
-  const handleToggleComplete = useCallback(async (item) => {
-    if (item.isOptimistic) return; // Don't allow toggle on optimistic items
-    
-    const itemId = item.id;
-    const newCompletedState = !item.is_completed;
-    
-    // Add to loading set
-    setLoadingItems(prev => new Set([...prev, itemId]));
-    
-    try {
-      await updateItem(itemId, { is_completed: newCompletedState });
-    } catch (error) {
-      console.error('Error updating item:', error);
-    } finally {
-      // Remove from loading set
-      setLoadingItems(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(itemId);
-        return newSet;
-      });
-    }
-  }, [updateItem]);
-
-  const handleEditItem = (item) => {
-    setEditingItem(item.id);
-    setEditText(item.name);
-  };
-
-  const handleSaveEdit = async (itemId) => {
-    if (!editText.trim()) return;
-    
-    try {
-      await updateItem(itemId, { name: editText.trim() });
-      setEditingItem(null);
-      setEditText('');
-      toast.success('Item updated!');
-    } catch (error) {
-      toast.error('Failed to update item');
-    }
-  };
-
-  const handleDeleteItem = useCallback(async (itemId) => {
-    if (typeof itemId === 'string' && itemId.startsWith('temp_')) {
-      // Remove optimistic item
-      setOptimisticItems(prev => prev.filter(item => item.id !== itemId));
-      return;
-    }
-    
-    try {
-      await deleteItem(itemId);
-      toast.success('Item deleted!');
-    } catch (error) {
-      toast.error('Failed to delete item');
-    }
-  }, [deleteItem]);
-
-  const calculateShoppingTotal = () => {
-    return Object.values(itemPrices).reduce((total, price) => 
-      total + parseFloat(price || 0), 0
-    );
-  };
-
-  const handleFinishShopping = async () => {
-    const total = calculateShoppingTotal();
-    if (total <= 0) {
-      setShoppingMode(false);
-      return;
-    }
-
-    setConfirmModal({
-      isOpen: true,
-      title: "Log Expense",
-      message: `Your total is ₹${total.toFixed(2)}. Log this as a new expense?`,
-      onConfirm: async () => {
-        try {
-          const expenseText = `Shopping for '${selectedList?.name || 'Unknown'}' list, total was ${total.toFixed(2)}`;
-          await apiClient.post('/expenses/', { text: expenseText });
-          toast.success("Expense logged from your shopping trip!");
-          setShoppingMode(false);
-          setItemPrices({});
-        } catch (error) {
-          toast.error("Failed to log expense.");
-        }
-      }
-    });
-  };
-
-  const pendingItems = displayItems.filter(item => !item.is_completed) || [];
-  const completedItems = displayItems.filter(item => item.is_completed) || [];
 
   return (
     <div 

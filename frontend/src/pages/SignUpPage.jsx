@@ -60,7 +60,7 @@ function SignUpPage() {
 
     setIsLoading(true);
     try {
-      await apiClient.post('http://127.0.0.1:8000/api/v1/users/register/', {
+      const response = await apiClient.post('/users/register/', {
         username,
         email,
         password,

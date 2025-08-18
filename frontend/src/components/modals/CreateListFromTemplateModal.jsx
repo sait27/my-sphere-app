@@ -7,7 +7,7 @@ const CreateListFromTemplateModal = ({ isOpen, onClose, template, onCreate }) =>
   const [listName, setListName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (!isOpen) return null;
+  if (!isOpen || !template) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +31,7 @@ const CreateListFromTemplateModal = ({ isOpen, onClose, template, onCreate }) =>
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
       <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 w-full max-w-md animate-scale-in">
         <h3 className="text-xl font-bold text-white mb-2">Create List from Template</h3>
-        <p className="text-slate-400 mb-4">Using template: <span className="font-semibold text-purple-400">{template.name}</span></p>
+        <p className="text-slate-400 mb-4">Using template: <span className="font-semibold text-purple-400">{template?.name || 'Unknown Template'}</span></p>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
