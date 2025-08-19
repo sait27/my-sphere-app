@@ -4,7 +4,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
     List, ListItem, ListTemplate, ListCategory, 
-    ListShare, ListActivity
+    ListActivity
 )
 
 class ListCategorySerializer(serializers.ModelSerializer):
@@ -38,18 +38,7 @@ class ListTemplateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'user', 'user_name', 'use_count', 'created_at']
 
-class ListShareSerializer(serializers.ModelSerializer):
-    shared_with_name = serializers.CharField(source='user.username', read_only=True)
-    shared_with_email = serializers.CharField(source='user.email', read_only=True)
-    shared_by_name = serializers.CharField(source='shared_by.username', read_only=True)
-    
-    class Meta:
-        model = ListShare
-        fields = [
-            'id', 'user', 'shared_with_name', 'shared_with_email',
-            'permission_level', 'shared_by', 'shared_by_name', 'shared_at'
-        ]
-        read_only_fields = ['id', 'shared_with_name', 'shared_with_email', 'shared_by_name', 'shared_at']
+# Sharing functionality removed
 
 class ListActivitySerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.username', read_only=True)
@@ -66,7 +55,6 @@ class ListSerializer(serializers.ModelSerializer):
     items = ListItemSerializer(many=True, read_only=True)
     category_details = ListCategorySerializer(source='category', read_only=True)
     template_details = ListTemplateSerializer(source='template', read_only=True)
-    shared_users = ListShareSerializer(source='listshare_set', many=True, read_only=True)
     recent_activities = ListActivitySerializer(source='activities', many=True, read_only=True)
     
     # Computed fields
@@ -80,16 +68,16 @@ class ListSerializer(serializers.ModelSerializer):
         model = List
         fields = [
             'id', 'name', 'description', 'list_type', 'category', 'category_details',
-            'priority', 'is_shared', 'template', 'template_details', 'auto_sort',
+            'priority', 'template', 'template_details', 'auto_sort',
             'sort_by', 'due_date', 'is_archived', 'completion_percentage',
             'ai_suggestions', 'estimated_cost', 'actual_cost', 'created_at',
-            'updated_at', 'items', 'shared_users', 'recent_activities',
+            'updated_at', 'items', 'recent_activities',
             'items_count', 'completed_items_count', 'pending_items_count',
             'total_estimated_cost', 'total_actual_cost'
         ]
         read_only_fields = [
             'id', 'completion_percentage', 'created_at', 'updated_at',
-            'items', 'shared_users', 'recent_activities', 'items_count',
+            'items', 'recent_activities', 'items_count',
             'completed_items_count', 'pending_items_count', 'total_estimated_cost',
             'total_actual_cost'
         ]
@@ -129,7 +117,7 @@ class ListSummarySerializer(serializers.ModelSerializer):
         model = List
         fields = [
             'id', 'name', 'list_type', 'priority', 'completion_percentage',
-            'is_shared', 'is_archived', 'due_date', 'created_at', 'updated_at',
+            'is_archived', 'due_date', 'created_at', 'updated_at',
             'category_name', 'category_color', 'items_count', 'completed_items_count'
         ]
     
@@ -182,14 +170,7 @@ class ListAnalyticsSerializer(serializers.Serializer):
     )
     include_archived = serializers.BooleanField(default=False)
 
-class ListSharingSerializer(serializers.Serializer):
-    """Serializer for list sharing"""
-    recipient_email = serializers.EmailField(required=False)
-    recipient_id = serializers.IntegerField(required=False)
-    permission_level = serializers.ChoiceField(
-        choices=[choice[0] for choice in ListShare.PERMISSION_LEVELS]
-    )
-    message = serializers.CharField(max_length=500, required=False)
+# Sharing functionality removed
 
 class ListExportSerializer(serializers.Serializer):
     """Serializer for list export"""

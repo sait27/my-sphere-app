@@ -63,7 +63,7 @@ class GoalViewSet(viewsets.ModelViewSet):
 class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
-    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+    parser_classes = [parsers.JSONParser, parsers.MultiPartParser, parsers.FormParser]
     
     def get_queryset(self):
         queryset = Task.objects.filter(user=self.request.user)
@@ -375,7 +375,7 @@ class TaskNoteViewSet(viewsets.ModelViewSet):
 class TaskAttachmentViewSet(viewsets.ModelViewSet):
     serializer_class = TaskAttachmentSerializer
     permission_classes = [IsAuthenticated]
-    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+    parser_classes = [parsers.JSONParser, parsers.MultiPartParser, parsers.FormParser]
     
     def get_queryset(self):
         task_id = self.request.query_params.get('task', None)

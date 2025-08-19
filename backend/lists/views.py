@@ -8,15 +8,18 @@ from rest_framework import generics
 from rest_framework.decorators import action
 from django.db import models
 from django.http import HttpResponse
-from django.core.exceptions import PermissionDenied, ValidationError
-from .models import List, ListItem, ListTemplate, ListCategory, ListShare, ListActivity, ListAnalytics
-from .serializers import ListSerializer, ListItemSerializer, ListTemplateSerializer, ListCategorySerializer, ListShareSerializer, ListActivitySerializer, ListAnalyticsSerializer
+from django.core.exceptions import PermissionDenied, ValidationError, ObjectDoesNotExist
+from .models import List, ListItem, ListTemplate, ListCategory, ListActivity, ListAnalytics, TemplateItem
+from .serializers import (
+    ListSerializer, ListItemSerializer, ListTemplateSerializer, 
+    ListCategorySerializer, ListActivitySerializer, ListAnalyticsSerializer
+)
 
 import os
 import google.generativeai as genai
 import json
 from django.utils import timezone
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 # --- ViewSet for Managing Lists (Create, Read, Update, Delete) ---
 class ListViewSet(viewsets.ModelViewSet):
@@ -28,7 +31,9 @@ class ListViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # Ensure users can only see their own lists
-        queryset = List.objects.filter(user=self.request.user).prefetch_related('items', 'categories', 'shares')
+        queryset = List.objects.filter(user=self.request.user).prefetch_related(
+            'items'
+        ).select_related('category')
         
         # Apply search filter
         search = self.request.query_params.get('search', '')
@@ -263,64 +268,7 @@ class SmartAddItemView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# --- ViewSet for List Sharing ---
-class ListShareViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
-    serializer_class = ListShareSerializer
-    lookup_field = 'id'
-    
-    def get_queryset(self):
-        # Get shares where the user is either the owner or the recipient
-        return ListShare.objects.filter(
-            models.Q(list__user=self.request.user) | 
-            models.Q(shared_with=self.request.user)
-        ).select_related('list', 'shared_with')
-    
-    def perform_create(self, serializer):
-        # Verify the list belongs to the user
-        list_id = self.request.data.get('list')
-        try:
-            list_obj = List.objects.get(id=list_id, user=self.request.user)
-            serializer.save(list=list_obj)
-        except List.DoesNotExist:
-            raise PermissionDenied("You do not have permission to share this list")
-    
-    @action(detail=False, methods=['get'])
-    def shared_with_me(self, request):
-        """Get lists shared with the current user"""
-        shares = ListShare.objects.filter(shared_with=request.user).select_related('list')
-        shared_lists = [share.list for share in shares]
-        
-        serializer = ListSerializer(shared_lists, many=True)
-        return Response(serializer.data)
-    
-    @action(detail=False, methods=['get'])
-    def my_shared_lists(self, request):
-        """Get lists the current user has shared with others"""
-        shares = ListShare.objects.filter(list__user=request.user).select_related('list', 'shared_with')
-        
-        # Group by list
-        shared_lists = {}
-        for share in shares:
-            if share.list_id not in shared_lists:
-                shared_lists[share.list_id] = {
-                    'list': share.list,
-                    'shared_with': []
-                }
-            shared_lists[share.list_id]['shared_with'].append({
-                'user': share.shared_with.username,
-                'email': share.shared_with.email,
-                'can_edit': share.can_edit
-            })
-        
-        # Format response
-        result = []
-        for list_id, data in shared_lists.items():
-            list_data = ListSerializer(data['list']).data
-            list_data['shared_with'] = data['shared_with']
-            result.append(list_data)
-        
-        return Response(result)
+
         
 class ListItemDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
@@ -510,7 +458,7 @@ class ListTemplateViewSet(viewsets.ModelViewSet):
         # Get user's templates and public templates
         queryset = ListTemplate.objects.filter(
             models.Q(user=self.request.user) | models.Q(is_public=True)
-        ).prefetch_related('items', 'categories')
+        )
         
         # Apply search filter
         search = self.request.query_params.get('search', '')
@@ -575,21 +523,85 @@ class ListTemplateViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
         
-    @action(detail=True, methods=['post'])
     def create_list(self, request, pk=None):
         """Create a new list from this template"""
         try:
-            template = self.get_object()
+            # Print debug info
+            print("Request data:", request.data)
+            print("Template ID:", pk)
+            
+            # Get the template
+            try:
+                template = ListTemplate.objects.get(id=pk)
+                print("Found template:", template.id, template.name)
+            except ListTemplate.DoesNotExist as e:
+                print("Template not found:", str(e))
+                return Response(
+                    {'error': f'Template not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Get or default name and description
             name = request.data.get('name', template.name)
+            description = request.data.get('description', template.description)
+            print("Creating list with name:", name)
             
-            from .services import ListTemplateService
-            new_list = ListTemplateService().create_list_from_template(template, request.user, name)
-            
-            # Return the created list
-            list_serializer = ListSerializer(new_list)
-            return Response(list_serializer.data, status=status.HTTP_201_CREATED)
+            try:
+                # Create new list
+                new_list = List.objects.create(
+                    user=request.user,
+                    name=name,
+                    description=description,
+                    list_type='checklist',
+                    template=template,
+                    is_shared=False  # Default value for new lists
+                )
+                print("Created new list:", new_list.id)
+                
+                # Copy template items if they exist
+                template_items = template.template_items.all()
+                print(f"Found {template_items.count()} template items")
+                
+                for item in template_items:
+                    ListItem.objects.create(
+                        list=new_list,
+                        name=item.name,
+                        description=item.description,
+                        quantity=item.quantity,
+                        unit=item.unit,
+                        priority=item.priority,
+                        category=item.category,
+                        brand=item.brand,
+                        price=item.price,
+                        estimated_price=item.estimated_price,
+                        notes=item.notes,
+                        url=item.url,
+                        image_url=item.image_url
+                    )
+                
+                # Increment template use count
+                template.use_count += 1
+                template.save()
+                
+                # Return the created list
+                list_serializer = ListSerializer(new_list)
+                return Response(list_serializer.data, status=status.HTTP_201_CREATED)
+                
+            except Exception as create_error:
+                print("Error creating list:", str(create_error))
+                if 'new_list' in locals():
+                    new_list.delete()  # Cleanup on error
+                return Response(
+                    {'error': f'Error creating list: {str(create_error)}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            print("Unexpected error:", str(e))
+            return Response(
+                {'error': f'Unexpected error: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
             
     @action(detail=False, methods=['get'])
     def recommended(self, request):

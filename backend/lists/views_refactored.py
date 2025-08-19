@@ -12,10 +12,10 @@ from django.http import HttpResponse
 from django.core.exceptions import ValidationError
 
 from . import models as list_models
-from .models import List, ListItem, ListTemplate, ListCategory, ListShare, ListActivity, ListAnalytics
+from .models import List, ListItem, ListTemplate, ListCategory, ListActivity, ListAnalytics
 from .serializers import (
     ListSerializer, ListItemSerializer, ListTemplateSerializer,
-    ListCategorySerializer, ListShareSerializer, ListActivitySerializer,
+    ListCategorySerializer, ListActivitySerializer,
     ListAnalyticsSerializer
 )
 from .services import ListService, ListItemService, ListTemplateService, ListAnalyticsService
@@ -35,7 +35,7 @@ class ListViewSetRefactored(viewsets.ModelViewSet):
     serializer_class = ListSerializer
 
     def get_queryset(self):
-        return List.objects.filter(user=self.request.user).prefetch_related('items', 'categories', 'shares')
+        return List.objects.filter(user=self.request.user).prefetch_related('items', 'categories')
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -274,45 +274,4 @@ class ListInsightsView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ListShareViewSet(viewsets.ModelViewSet):
-    """Handle list sharing functionality"""
-    permission_classes = [IsAuthenticated]
-    serializer_class = ListShareSerializer
 
-    def get_queryset(self):
-        return ListShare.objects.filter(
-            models.Q(list__user=self.request.user) | models.Q(shared_with=self.request.user)
-        )
-
-    @action(detail=False, methods=['post'])
-    def share_list(self, request):
-        """Share a list with another user"""
-        try:
-            list_id = request.data.get('list_id')
-            email = request.data.get('email')
-            permission = request.data.get('permission', 'view')
-            
-            if not list_id or not email:
-                return Response({'error': 'list_id and email are required'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            list_obj = List.objects.get(id=list_id, user=request.user)
-            shared_with_user = User.objects.get(email=email)
-            
-            share, created = ListShare.objects.get_or_create(
-                list=list_obj,
-                shared_with=shared_with_user,
-                defaults={'permission': permission, 'shared_by': request.user}
-            )
-            
-            if not created:
-                share.permission = permission
-                share.save()
-            
-            serializer = self.get_serializer(share)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except List.DoesNotExist:
-            return Response({'error': 'List not found'}, status=status.HTTP_404_NOT_FOUND)
-        except User.DoesNotExist:
-            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

@@ -28,6 +28,37 @@ class ListTemplate(models.Model):
     
     def __str__(self):
         return f"{self.name} - {self.user.username}"
+        
+    def clone_to_list(self, user, list_name=None, list_description=None):
+        """Create a new list from this template with all its items"""
+        # Create the new list
+        new_list = List.objects.create(
+            user=user,
+            name=list_name or self.name,
+            description=list_description or self.description,
+            list_type='checklist',
+            template=self
+        )
+        
+        # Clone all template items to the new list
+        for template_item in self.template_items.all():
+            ListItem.objects.create(
+                list=new_list,
+                name=template_item.name,
+                description=template_item.description,
+                quantity=template_item.quantity,
+                unit=template_item.unit,
+                priority=template_item.priority,
+                category=template_item.category,
+                brand=template_item.brand,
+                price=template_item.price,
+                estimated_price=template_item.estimated_price,
+                notes=template_item.notes,
+                url=template_item.url,
+                image_url=template_item.image_url
+            )
+            
+        return new_list
 
 class ListCategory(models.Model):
     """Custom categories for lists"""
@@ -76,8 +107,6 @@ class List(models.Model):
     priority = models.CharField(max_length=10, choices=PRIORITY_LEVELS, default='medium')
     
     # Advanced features
-    is_shared = models.BooleanField(default=False)
-    shared_with = models.ManyToManyField(User, through='ListShare', through_fields=('list', 'user'), related_name='shared_lists')
     template = models.ForeignKey(ListTemplate, on_delete=models.SET_NULL, null=True, blank=True)
     
     # Smart features
@@ -99,6 +128,9 @@ class List(models.Model):
     ai_suggestions = models.JSONField(default=dict, blank=True)
     estimated_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     actual_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    # Sharing settings
+    is_shared = models.BooleanField(default=False)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -129,22 +161,7 @@ class List(models.Model):
             models.Index(fields=['user', 'is_archived']),
         ]
 
-class ListShare(models.Model):
-    """Sharing permissions for lists"""
-    PERMISSION_LEVELS = [
-        ('view', 'View Only'),
-        ('edit', 'Edit Items'),
-        ('admin', 'Full Access')
-    ]
-    
-    list = models.ForeignKey(List, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    permission_level = models.CharField(max_length=10, choices=PERMISSION_LEVELS, default='view')
-    shared_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='shared_lists_created')
-    shared_at = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        unique_together = ['list', 'user']
+# Sharing functionality removed
 
 class ListItem(models.Model):
     PRIORITY_LEVELS = [
@@ -226,7 +243,6 @@ class ListActivity(models.Model):
         ('item_added', 'Item Added'),
         ('item_completed', 'Item Completed'),
         ('item_removed', 'Item Removed'),
-        ('shared', 'Shared'),
         ('archived', 'Archived')
     ]
     
@@ -239,6 +255,30 @@ class ListActivity(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+
+class TemplateItem(models.Model):
+    """Items that belong to a list template"""
+    template = models.ForeignKey(ListTemplate, on_delete=models.CASCADE, related_name='template_items')
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+    quantity = models.CharField(max_length=50, blank=True, null=True)
+    unit = models.CharField(max_length=20, blank=True, null=True)  # kg, lbs, pieces, etc.
+    
+    # Enhanced fields
+    priority = models.CharField(max_length=10, choices=ListItem.PRIORITY_LEVELS, default='medium')
+    category = models.CharField(max_length=50, blank=True, null=True)
+    brand = models.CharField(max_length=100, blank=True, null=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    estimated_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    # Metadata
+    notes = models.TextField(blank=True, null=True)
+    url = models.URLField(blank=True, null=True)  # Product URL
+    image_url = models.URLField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['created_at']
 
 class ListAnalytics(models.Model):
     """Analytics data for lists"""

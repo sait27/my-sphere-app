@@ -1,11 +1,4 @@
-import secrets
-import string
-from datetime import datetime, timedelta
-from django.db import models
-from django.contrib.auth.models import User
-from django.core.exceptions import ValidationError
-from django.utils import timezone
-from .models import List, ListShare
+# Sharing functionality removed
 
 
 class ListSharingService:
@@ -17,28 +10,33 @@ class ListSharingService:
         return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
     
     @staticmethod
-    def create_share_link(list_obj, user, permission='view', expires_in_days=30):
+    def create_share_link(list_obj, shared_by, user_email, permission='view', expires_in_days=30):
         """Create a shareable link for a list"""
-        if list_obj.user != user:
+        if list_obj.user != shared_by:
             raise ValidationError("You can only share your own lists")
+            
+        if shared_by.email == user_email:
+            raise ValidationError("You cannot share a list with yourself")
         
-        # Check if a share already exists for this list and permission
+        # Check if a share already exists for this email
         existing_share = ListShare.objects.filter(
             list=list_obj,
-            permission=permission,
+            user_email=user_email,
             is_active=True
         ).first()
         
         if existing_share:
-            # Update expiry date
+            # Update permission and expiry date
+            existing_share.permission = permission
             existing_share.expires_at = timezone.now() + timedelta(days=expires_in_days)
             existing_share.save()
             return existing_share
-        
+            
         # Create new share
         share = ListShare.objects.create(
             list=list_obj,
-            shared_by=user,
+            user_email=user_email,
+            shared_by=shared_by,
             share_token=ListSharingService.generate_share_token(),
             permission=permission,
             expires_at=timezone.now() + timedelta(days=expires_in_days),
@@ -83,7 +81,7 @@ class ListSharingService:
     def get_shared_with_user(user):
         """Get all lists shared with a specific user"""
         return ListShare.objects.filter(
-            shared_with=user,
+            user_email=user.email,
             is_active=True,
             expires_at__gt=timezone.now()
         ).select_related('list', 'shared_by').order_by('-created_at')
@@ -97,10 +95,11 @@ class ListSharingService:
         
         if share.list.user == user:
             raise ValidationError("You cannot accept a share to your own list")
+            
+        if share.user_email != user.email:
+            raise ValidationError("This share link is not intended for your email address")
         
-        # Add user to shared_with if not already added
-        if user not in share.shared_with.all():
-            share.shared_with.add(user)
+        if not share.accepted_at:
             share.accepted_at = timezone.now()
             share.save()
         
@@ -112,10 +111,10 @@ class ListSharingService:
         if list_obj.user == user:
             return True, 'owner'
         
-        # Check if list is shared with user
+        # Check if list is shared with user's email
         share = ListShare.objects.filter(
             list=list_obj,
-            shared_with=user,
+            user_email=user.email,
             is_active=True,
             expires_at__gt=timezone.now()
         ).first()
@@ -132,17 +131,16 @@ class ListSharingService:
             list=list_obj,
             is_active=True,
             expires_at__gt=timezone.now()
-        ).prefetch_related('shared_with')
+        )
         
         collaborators = []
         for share in shares:
-            for user in share.shared_with.all():
-                collaborators.append({
-                    'user': user,
-                    'permission': share.permission,
-                    'accepted_at': share.accepted_at,
-                    'share_id': share.id
-                })
+            collaborators.append({
+                'email': share.user_email,
+                'permission': share.permission,
+                'accepted_at': share.accepted_at,
+                'share_id': share.id
+            })
         
         return collaborators
     

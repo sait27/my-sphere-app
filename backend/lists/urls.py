@@ -3,22 +3,20 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from .sharing_views import (
-    ListShareView, SharedListView, UserSharesView,
-    ShareCollaboratorsView
-)
 from .bulk_operations import (
     ListBulkOperationsView, ListItemBulkOperationsView
 )
 
 router = DefaultRouter()
-router.register(r'templates', views.ListTemplateViewSet, basename='listtemplate')
 # This will handle /lists/ and /lists/<pk>/
 router.register(r'', views.ListViewSet, basename='list')
 
-
 urlpatterns = [
     # --- SPECIFIC URLS FIRST (BEFORE ROUTER) ---
+    # Templates with explicit create endpoint
+    path('templates/<str:pk>/create/', views.ListTemplateViewSet.as_view({'post': 'create_list'}), name='template-create-list'),
+    path('templates/', views.ListTemplateViewSet.as_view({'get': 'list', 'post': 'create'}), name='template-list'),
+    path('templates/<str:pk>/', views.ListTemplateViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='template-detail'),
     path('agenda/', views.AgendaView.as_view(), name='agenda'),
     path('analytics/', views.ListAnalyticsView.as_view(), name='list-analytics'),
 
@@ -28,15 +26,10 @@ urlpatterns = [
     path('<str:list_id>/smart_completion/', views.SmartCompletionView.as_view(), name='smart-completion'),
     path('items/<str:item_id>/', views.ListItemDetailView.as_view(), name='list-item-detail'),
     
-    # Enhanced template operations
-    path('templates/<str:template_id>/create/', views.CreateListFromTemplateView.as_view(), name='create-from-template'),
+    # Enhanced template operations - NOW HANDLED BY ROUTER
+    # path('templates/<str:template_id>/create/', views.CreateListFromTemplateView.as_view(), name='create-from-template'),
 
-    # Sharing URLs
-    path('<str:list_id>/share/', ListShareView.as_view(), name='list-share'),
-    path('<str:list_id>/share/<str:share_id>/', ListShareView.as_view(), name='list-share-detail'),
-    path('shared/<str:share_token>/', SharedListView.as_view(), name='shared-list'),
-    path('shares/', UserSharesView.as_view(), name='user-shares'),
-    path('shares/<str:share_id>/collaborators/', ShareCollaboratorsView.as_view(), name='share-collaborators'),
+    # Sharing functionality removed
 
     # Bulk Operations & Export URLs
     path('bulk/', ListItemBulkOperationsView.as_view(), name='list-item-bulk-operations'),
