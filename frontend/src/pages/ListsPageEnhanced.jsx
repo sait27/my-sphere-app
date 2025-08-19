@@ -23,8 +23,8 @@ import {
   CheckCircle, BarChart3, FileText, Users,
   Download, Archive, Grid3x3,
   List as ListIcon, Target, Edit3, Settings,
-  Calendar, Clock, Star, Heart, Bookmark,
-  Share2, Copy, Eye, EyeOff, Lock, Unlock
+  Calendar, Clock, Star, Share2, Copy, 
+  Eye, EyeOff, Lock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import apiClient from '../api/axiosConfig';
@@ -90,15 +90,7 @@ const ListsPageEnhanced = () => {
     fetchAnalytics
   } = useListAnalytics();
   
-  // Use sharing hook for shared lists
-  const {
-    sharedLists,
-    sharedWithMe,
-    loading: sharingLoading,
-    error: sharingError,
-    fetchMySharedLists,
-    fetchSharedWithMe
-  } = useListSharing();
+  // Sharing functionality coming soon
 
   // Remove the incorrect setLists function since useLists doesn't provide it
   // The component should use fetchLists() to refresh data instead
@@ -149,29 +141,15 @@ const ListsPageEnhanced = () => {
     return () => clearTimeout(timeoutId);
   }, [filters, sortBy, fetchLists]);
   
-  // Fetch shared lists when activeTab changes to 'shared'
-  useEffect(() => {
-    if (activeTab === 'shared') {
-      console.log('ListsPageEnhanced: Fetching shared lists...');
-      fetchSharedWithMe();
-      fetchMySharedLists();
-    }
-  }, [activeTab, fetchSharedWithMe, fetchMySharedLists]);
+  // Shared lists functionality coming soon
 
-  // Fetch analytics only on mount (not on every filter change)
+  // Fetch analytics when lists change
   useEffect(() => {
     console.log('ListsPageEnhanced: Fetching analytics...');
     fetchAnalytics();
   }, [lists]);
   
-  // Fetch shared lists when the shared tab is active
-  useEffect(() => {
-    if (activeTab === 'shared') {
-      console.log('ListsPageEnhanced: Fetching shared lists...');
-      fetchSharedLists();
-      fetchMySharedLists();
-    }
-  }, [activeTab, fetchSharedLists, fetchMySharedLists]);
+  // This effect is not needed as we already have another useEffect handling shared lists above
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -838,16 +816,15 @@ const ListsPageEnhanced = () => {
         )}
 
         {activeTab === 'shared' && (
-          <ListShareView 
-            sharedLists={sharedWithMe}
-            mySharedLists={sharedLists}
-            loading={sharingLoading}
-            error={sharingError}
-            onRefresh={() => {
-              fetchSharedWithMe();
-              fetchMySharedLists();
-            }}
-          />
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
+              <Clock className="w-8 h-8 text-blue-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">Coming Soon!</h3>
+            <p className="text-slate-400 max-w-md text-center">
+              List sharing functionality is currently under development. Stay tuned for updates!
+            </p>
+          </div>
         )}
         {activeTab === 'analytics' && (
           <ListAnalytics 

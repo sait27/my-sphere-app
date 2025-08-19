@@ -63,8 +63,7 @@ export const useListSharing = () => {
       setError(null);
       
       console.log('Sharing list:', { listId, email, permission });
-      const response = await apiClient.post('/lists/sharing/', {
-        list_id: listId,
+      const response = await apiClient.post(`/lists/sharing/${listId}/share/`, {
         user_email: email,
         permission
       });
@@ -94,7 +93,11 @@ export const useListSharing = () => {
       setError(null);
       
       console.log('Removing sharing:', sharingId);
-      await apiClient.delete(`/lists/sharing/${sharingId}/`);
+      const list = sharedLists.find(share => share.id === sharingId)?.list?.id;
+      if (!list) {
+        throw new Error('Cannot find list ID for the share');
+      }
+      await apiClient.delete(`/lists/sharing/${list}/share/${sharingId}/`);
       
       toast.success('Sharing removed successfully!');
       
@@ -120,7 +123,11 @@ export const useListSharing = () => {
       setError(null);
       
       console.log('Updating sharing:', { sharingId, permission });
-      const response = await apiClient.patch(`/lists/sharing/${sharingId}/`, {
+      const list = sharedLists.find(share => share.id === sharingId)?.list?.id;
+      if (!list) {
+        throw new Error('Cannot find list ID for the share');
+      }
+      const response = await apiClient.patch(`/lists/sharing/${list}/share/${sharingId}/`, {
         permission
       });
       
