@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import { 
   CheckCircle2, 
   Clock, 
@@ -14,6 +13,8 @@ import {
 } from 'lucide-react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
+import { motion } from 'framer-motion';
+import TrendsDashboard from './Dashboard/TrendsDashboard'; // Import the TrendsDashboard component
 
 // Register ChartJS components
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
@@ -207,146 +208,102 @@ const TodoStats = ({ todos = [] }) => {
           </button>
         </div>
       </div>
-      
-      {/* Summary View */}
-      {activeView === 'summary' && (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
+
+      {/* Content based on activeView */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        key={activeView} // Key to trigger re-animation on view change
+      >
+        {activeView === 'summary' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {stats.map((stat, index) => (
               <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50 hover:border-slate-600/50 transition-all duration-300"
+                key={index}
+                className={`relative p-5 rounded-xl shadow-lg overflow-hidden bg-gradient-to-br ${stat.color}`}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className={`p-2 bg-gradient-to-r ${stat.color} rounded-lg`}>
-                    <stat.icon className="w-4 h-4 text-white" />
-                  </div>
-                  <span className={`text-2xl font-bold ${stat.textColor}`}>
-                    {stat.value}
-                  </span>
+                <div className="absolute top-0 left-0 w-full h-full bg-black opacity-20"></div>
+                <div className="relative z-10 flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-white opacity-80">{stat.label}</h3>
+                  <stat.icon size={20} className={`text-white opacity-70 ${stat.textColor}`} />
                 </div>
-                <p className="text-slate-400 text-sm font-medium">{stat.label}</p>
+                <p className="relative z-10 text-3xl font-bold text-white">{stat.value}</p>
               </motion.div>
             ))}
-          </div>
 
-          {/* Completion Rate Progress Bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50 mb-4"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-white font-semibold">Completion Rate</h3>
-              <span className="text-2xl font-bold text-blue-400">{completionRate}%</span>
-            </div>
-            <div className="w-full bg-slate-700/50 rounded-full h-3">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${completionRate}%` }}
-                transition={{ delay: 0.8, duration: 1 }}
-                className="bg-gradient-to-r from-blue-500 to-cyan-500 h-3 rounded-full"
-              />
-            </div>
-            <p className="text-slate-400 text-sm mt-2">
-              {completedTasks} of {totalTasks} tasks completed
-            </p>
-          </motion.div>
-          
-          {/* Weekly Productivity Trend */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-white font-semibold">Weekly Productivity</h3>
-              <div className={`flex items-center gap-1 ${productivityTrend.improved ? 'text-green-400' : 'text-red-400'}`}>
-                <span className="text-lg font-bold">{Math.abs(productivityTrend.percentChange)}%</span>
-                {productivityTrend.improved ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+            {/* Productivity Trend Card */}
+            <motion.div
+              className="relative p-5 rounded-xl shadow-lg overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-500 md:col-span-2 lg:col-span-3"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: stats.length * 0.05 }}
+            >
+              <div className="absolute top-0 left-0 w-full h-full bg-black opacity-20"></div>
+              <div className="relative z-10 flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-white opacity-80">Productivity Trend (Last 7 Days)</h3>
+                <TrendingUp size={20} className="text-purple-400" />
               </div>
-            </div>
-            <p className="text-slate-400 text-sm">
-              {productivityTrend.current} tasks completed this week vs {productivityTrend.previous} last week
-            </p>
-          </motion.div>
-        </>
-      )}
-      
-      {/* Trends View */}
-      {activeView === 'trends' && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50"
-        >
-          <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-            <BarChart4 size={18} />
-            Task Completion by Day of Week
-          </h3>
-          <div className="h-64">
-            <Bar 
-              data={getCompletionByDayOfWeek()} 
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    ticks: { color: 'rgba(255, 255, 255, 0.7)' },
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                  },
-                  x: {
-                    ticks: { color: 'rgba(255, 255, 255, 0.7)' },
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                  }
-                },
-                plugins: {
-                  legend: {
-                    labels: { color: 'rgba(255, 255, 255, 0.7)' }
-                  }
-                }
-              }}
-            />
+              <div className="relative z-10 flex items-end justify-between">
+                <div>
+                  <p className="text-3xl font-bold text-white">{productivityTrend.current} Tasks</p>
+                  <p className="text-sm text-white opacity-80">Completed this week</p>
+                </div>
+                <div className={`flex items-center text-lg font-semibold ${productivityTrend.improved ? 'text-green-400' : 'text-red-400'}`}>
+                  {productivityTrend.improved ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
+                  {Math.abs(productivityTrend.percentChange)}%
+                </div>
+              </div>
+              <p className="relative z-10 text-xs text-white opacity-60 mt-2">vs. previous 7 days ({productivityTrend.previous} tasks)</p>
+            </motion.div>
           </div>
-        </motion.div>
-      )}
-      
-      {/* Categories View */}
-      {activeView === 'categories' && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50"
-        >
-          <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-            <PieChart size={18} />
-            Task Distribution by Priority
-          </h3>
-          <div className="flex justify-center">
-            <div className="h-64 w-64">
-              <Pie 
-                data={getPriorityDistribution()} 
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'right',
-                      labels: { color: 'rgba(255, 255, 255, 0.7)' }
-                    }
-                  }
-                }}
-              />
-            </div>
+        )}
+
+        {activeView === 'trends' && (
+          <div className="space-y-4">
+            <TrendsDashboard todos={todos} /> {/* Render the TrendsDashboard component */}
+            {/* Add other trend-related components here */}
           </div>
-        </motion.div>
-      )}
+        )}
+
+        {activeView === 'categories' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Priority Distribution Chart */}
+            <motion.div
+              className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <PieChart size={18} className="text-blue-400" />
+                Task Distribution by Priority
+              </h3>
+              <div className="h-64">
+                <Pie data={getPriorityDistribution()} options={{ responsive: true, maintainAspectRatio: false }} />
+              </div>
+            </motion.div>
+
+            {/* Completion by Day of Week Chart */}
+            <motion.div
+              className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <BarChart4 size={18} className="text-blue-400" />
+                Tasks Completed by Day of Week
+              </h3>
+              <div className="h-64">
+                <Bar data={getCompletionByDayOfWeek()} options={{ responsive: true, maintainAspectRatio: false }} />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 };

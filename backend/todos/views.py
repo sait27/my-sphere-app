@@ -5,6 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q, Count
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models import Avg, Sum, F
+from django.db.models.functions import TruncDate
 import json
 import os
 
@@ -192,6 +194,104 @@ class TaskViewSet(viewsets.ModelViewSet):
         }
         
         return Response(stats)
+
+    @action(detail=False, methods=['get'])
+    def advanced_dashboard(self, request):
+        """Advanced analytics dashboard for tasks.
+
+        Returns trends, top tags, time metrics, completion rates and AI-driven insights.
+        """
+        user = request.user
+        now = timezone.now()
+
+        user_tasks = Task.objects.filter(user=user)
+
+        total_tasks = user_tasks.count()
+        completed_tasks = user_tasks.filter(status='completed').count()
+        completion_rate = (completed_tasks / total_tasks * 100) if total_tasks else 0
+
+        # Average estimated and actual duration (minutes)
+        avg_estimated = user_tasks.aggregate(avg=Avg('estimated_duration'))['avg'] or 0
+        avg_actual = user_tasks.aggregate(avg=Avg('actual_duration'))['avg'] or 0
+
+        # Average time to complete (hours) using completed_at - created_at
+        completed_qs = user_tasks.filter(completed_at__isnull=False)
+        avg_completion_hours = 0
+        if completed_qs.exists():
+            avg_seconds = completed_qs.annotate(delta=F('completed_at') - F('created_at')).aggregate(avg=Avg(F('completed_at') - F('created_at')))['avg']
+            # avg_seconds is a datetime.timedelta-like object; convert to hours
+            try:
+                avg_completion_hours = avg_seconds.total_seconds() / 3600 if avg_seconds else 0
+            except Exception:
+                avg_completion_hours = 0
+
+        # Overdue trend (last 30 days) - completed per day and created per day
+        start_date = (now - timedelta(days=29)).date()
+        created_trend_qs = user_tasks.filter(created_at__date__gte=start_date)
+        created_trend = created_trend_qs.annotate(day=TruncDate('created_at')).values('day').annotate(count=Count('id')).order_by('day')
+
+        completed_trend_qs = user_tasks.filter(completed_at__date__gte=start_date)
+        completed_trend = completed_trend_qs.annotate(day=TruncDate('completed_at')).values('day').annotate(count=Count('id')).order_by('day')
+
+        # Top tags
+        top_tags = (
+            TaskTagAssignment.objects
+            .filter(task__user=user)
+            .values(name=F('tag__name'))
+            .annotate(count=Count('id'))
+            .order_by('-count')[:10]
+        )
+
+        # Top tasks by AI priority score
+        top_ai_tasks = user_tasks.order_by('-ai_priority_score')[:10]
+        top_ai_serialized = [
+            {
+                'id': t.id,
+                'title': t.title,
+                'ai_priority_score': t.ai_priority_score,
+                'status': t.status,
+                'due_date': t.due_date,
+            }
+            for t in top_ai_tasks
+        ]
+
+        # Time spent per task (sum of time entries)
+        time_spent = (
+            TimeEntry.objects.filter(user=user)
+            .values('task')
+            .annotate(total_minutes=Sum('duration_minutes'))
+            .order_by('-total_minutes')[:10]
+        )
+
+        # By status/priority/type
+        by_status = dict(user_tasks.values('status').annotate(count=Count('id')).values_list('status', 'count'))
+        by_priority = dict(user_tasks.values('priority').annotate(count=Count('id')).values_list('priority', 'count'))
+        by_type = dict(user_tasks.values('task_type').annotate(count=Count('id')).values_list('task_type', 'count'))
+
+        # AI insights summary (top actionable insights)
+        insights = AIInsight.objects.filter(user=user, is_dismissed=False).order_by('-confidence_score')[:10]
+        insights_serialized = AIInsightSerializer(insights, many=True).data
+
+        result = {
+            'total_tasks': total_tasks,
+            'completed_tasks': completed_tasks,
+            'completion_rate_percent': round(completion_rate, 1),
+            'avg_estimated_duration_minutes': round(avg_estimated, 1),
+            'avg_actual_duration_minutes': round(avg_actual, 1),
+            'avg_completion_time_hours': round(avg_completion_hours, 2),
+            'overdue_count': user_tasks.filter(due_date__lt=now, status__in=['pending', 'in_progress']).count(),
+            'by_status': by_status,
+            'by_priority': by_priority,
+            'by_type': by_type,
+            'created_trend': list(created_trend),
+            'completed_trend': list(completed_trend),
+            'top_tags': list(top_tags),
+            'top_ai_tasks': top_ai_serialized,
+            'time_spent_top_tasks': list(time_spent),
+            'ai_insights': insights_serialized,
+        }
+
+        return Response(result)
     
     @action(detail=True, methods=['post'])
     def add_note(self, request, pk=None):

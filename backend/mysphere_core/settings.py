@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'lists',
     'todos',
     'rest_framework',
+    'drf_spectacular',
     'integrations',
     'users',
     'corsheaders'
@@ -141,7 +142,30 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    # Use drf-spectacular for OpenAPI schema generation
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# Settings for drf-spectacular (OpenAPI)
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'MySphere API',
+    'DESCRIPTION': 'OpenAPI schema for the MySphere backend APIs',
+    'VERSION': '1.0.0',
+    # You can customize further (servers, security, components) as needed
+    # Define tag metadata so UI shows categorized sections
+    'TAGS': [
+        {'name': 'Expenses', 'description': 'Endpoints for managing expenses'},
+        {'name': 'Users', 'description': 'User authentication and profile endpoints'},
+        {'name': 'Budgets', 'description': 'Budget management endpoints'},
+        {'name': 'Lists', 'description': 'List and list-item endpoints'},
+        {'name': 'Todos', 'description': 'Todo/task endpoints'},
+        {'name': 'Integrations', 'description': 'Third-party integration endpoints'},
+    ],
+    # Use a postprocessing hook to tag operations by their path prefixes
+    'POSTPROCESSING_HOOKS': [
+        'mysphere_core.openapi.tag_operations',
+    ],
 }
 
 # JWT Configuration

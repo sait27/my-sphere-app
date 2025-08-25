@@ -1,5 +1,17 @@
 # Enhanced Listify Features Documentation
 
+## Version History
+| Version | Date | Changes |
+|---------|------|---------|
+| 2.0.0 | 2025-08-25 | - Added AI-powered features<br>- Enhanced template system<br>- Added smart completion detection<br>- Improved categorization |
+| 1.1.0 | 2025-07-15 | - Added basic template support<br>- Improved list organization |
+| 1.0.0 | 2025-06-01 | Initial release with basic list management |
+
+## Quick Links
+- [Setup Guide](LISTIFY_SETUP.md)
+- [Lists V2 Documentation](LISTS_V2_DOCUMENTATION.md)
+- [URL Configuration](URL_FIXES_DOCUMENTATION.md)
+
 ## 🚀 Major Enhancements Overview
 
 The Listify feature has been significantly enhanced with advanced AI capabilities, smart automation, and context-aware functionality. These improvements transform basic list management into an intelligent productivity system.
@@ -284,3 +296,74 @@ Enhanced logging provides detailed information about:
 - Template creation insights
 
 This enhanced Listify system transforms simple list management into an intelligent, context-aware productivity tool that learns from user behavior and provides actionable insights for better organization and efficiency.
+
+## 🔧 Troubleshooting Guide
+
+### Common Issues and Solutions
+
+1. **AI Parsing Not Working**
+   - **Symptom**: AI doesn't parse items correctly or returns errors
+   - **Causes**:
+     - Missing or invalid GOOGLE_API_KEY
+     - Network connectivity issues
+     - Rate limiting
+   - **Solutions**:
+     - Verify API key in .env file
+     - Check network connectivity
+     - Wait for rate limit reset
+     - Use fallback manual input mode
+
+2. **Template Creation Fails**
+   - **Symptom**: Cannot create or apply templates
+   - **Causes**:
+     - Database migration issues
+     - Permission problems
+   - **Solutions**:
+     - Run `python manage.py migrate lists`
+     - Check user permissions
+     - Clear browser cache
+
+3. **Performance Issues**
+   - **Symptom**: Slow list loading or operations
+   - **Causes**:
+     - Large number of items
+     - Browser caching issues
+     - Server load
+   - **Solutions**:
+     - Enable pagination
+     - Clear browser cache
+     - Use list archiving feature
+     - Optimize database queries
+
+4. **Smart Completion Issues**
+   - **Symptom**: Incorrect completion detection
+   - **Causes**:
+     - Outdated AI model
+     - Insufficient training data
+   - **Solutions**:
+     - Update AI model version
+     - Provide more user feedback
+     - Use manual completion mode
+
+### Diagnostic Tools
+
+1. **API Health Check**
+   ```bash
+   curl http://localhost:8000/api/health/lists/
+   ```
+
+2. **AI Service Test**
+   ```bash
+   python manage.py test_ai_service
+   ```
+
+3. **Template Validation**
+   ```bash
+   python manage.py validate_templates
+   ```
+
+### Support Resources
+- Technical Support: support@mysphere.com
+- Documentation: docs.mysphere.com/listify
+- Community Forum: community.mysphere.com/listify
+- Bug Reports: github.com/mysphere/issues

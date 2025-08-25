@@ -13,7 +13,7 @@ class AITaskEngine:
     def __init__(self):
         # Use Gemini API instead of OpenAI
         genai.configure(api_key=getattr(settings, 'GEMINI_API_KEY', None))
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
     
     def calculate_priority_score(self, task):
         """Calculate AI priority score based on multiple factors"""
@@ -53,31 +53,24 @@ class AITaskEngine:
             return 50  # Default score for a task
     
     def generate_task_suggestions(self, task):
-        """Generate AI suggestions for a task"""
+        """Generate AI suggestions for a task using Gemini."""
         try:
-            # Simple rule-based suggestions
-            suggestions = []
-            
-            if task.task_type == 'work':
-                suggestions.append("Break down into smaller subtasks")
-                suggestions.append("Set specific time blocks for focused work")
-            elif task.task_type == 'health':
-                suggestions.append("Schedule at a consistent time")
-                suggestions.append("Set reminders to maintain consistency")
-            elif task.task_type == 'learning':
-                suggestions.append("Allocate dedicated study time")
-                suggestions.append("Take notes and review regularly")
-            else:
-                suggestions.append("Set a specific deadline")
-                suggestions.append("Identify required resources beforehand")
-            
-            if task.priority in ['high', 'urgent']:
-                suggestions.append("Consider doing this task first thing in the morning")
-            
-            return "; ".join(suggestions)
-            
+            prompt = f"""
+            A user has the following task:
+            Title: {task.title}
+            Description: {task.description}
+            Priority: {task.priority}
+            Type: {task.task_type}
+
+            Provide 2-3 brief, actionable suggestions to help them complete this task successfully.
+            Format the response as a single string with suggestions separated by a semicolon.
+            Example: "Break it down into subtasks; Schedule a 1-hour focus block to work on it."
+            """
+            response = self.model.generate_content(prompt)
+            return response.text.strip()
         except Exception as e:
-            return "Focus on breaking this task into smaller, manageable steps."
+            print(f"AI suggestion generation failed: {e}")
+            return "Focus on breaking this task into smaller, manageable steps." # Fallback suggestion
     
     def categorize_task(self, task):
         """Use AI to categorize tasks automatically"""
@@ -199,10 +192,77 @@ class AITaskEngine:
         return insights
     
     def process_natural_language_task(self, user, text):
-        """Process natural language input to create structured tasks"""
-        # Always use fallback parsing for now to ensure functionality
-        return self._fallback_task_parsing(text)
-    
+        """
+        Process natural language input using Gemini to create structured tasks.
+        Falls back to a rule-based parser if the AI fails.
+        """
+        try:
+            # 1. Design the prompt with clear instructions and examples
+            prompt = f"""
+            You are an expert task parsing assistant. Analyze the user's text and extract a clean title, due date, priority, and task type.
+            Respond ONLY with a valid JSON object in the following format. Do not include any other text or explanations.
+
+            JSON format:
+            {{
+              "title": "A clean, concise action item.",
+              "due_date": "YYYY-MM-DDTHH:MM:SS format or null",
+              "priority": "urgent|high|medium|low or null",
+              "task_type": "work|health|finance|learning|social|personal or null"
+            }}
+
+            Rules:
+            - The 'title' must be cleaned of all extracted information (dates, times, priorities, etc.).
+            - Today's date is {timezone.now().strftime('%Y-%m-%d')}.
+            - If a value cannot be determined, use null.
+            - The 'due_date' must be a full ISO 8601 timestamp. If no time is specified, default to a reasonable time like 9:00 AM.
+
+            Examples:
+            Text: "Finalize the quarterly report before the meeting next Monday at 10 AM #work @high"
+            JSON:
+            {{
+              "title": "Finalize the quarterly report before the meeting",
+              "due_date": "{(timezone.now() + timedelta(days=(7-timezone.now().weekday() + 0) % 7 or 7)).strftime('%Y-%m-%d')}T10:00:00",
+              "priority": "high",
+              "task_type": "work"
+            }}
+
+            Text: "Call the doctor's office tomorrow"
+            JSON:
+            {{
+              "title": "Call the doctor's office",
+              "due_date": "{(timezone.now() + timedelta(days=1)).strftime('%Y-%m-%d')}T09:00:00",
+              "priority": "medium",
+              "task_type": "health"
+            }}
+
+            Now, parse the following user text:
+            Text: "{text}"
+            JSON:
+            """
+
+            # 2. Call the Gemini API
+            response = self.model.generate_content(prompt)
+            
+            # 3. Clean and parse the JSON response
+            # The API might wrap the JSON in ```json ... ```, so we strip that
+            response_text = response.text.strip().replace('```json', '').replace('```', '').strip()
+            parsed_data = json.loads(response_text)
+
+            # 4. Combine AI data with the original text for the description
+            return {
+                'title': parsed_data.get('title', text), # Fallback to full text for title
+                'description': text, # Always keep the original text as the description
+                'priority': parsed_data.get('priority', 'medium'),
+                'task_type': parsed_data.get('task_type', 'personal'),
+                'estimated_duration': None, # AI can estimate this too with prompt changes
+                'due_date': parsed_data.get('due_date')
+            }
+
+        except Exception as e:
+            print(f"AI parsing failed: {e}. Falling back to rule-based parser.")
+            # 5. If anything fails, use the old reliable method
+            return self._fallback_task_parsing(text)
+        
     def _fallback_task_parsing(self, text):
         """Fallback parsing when AI is not available"""
         # Basic parsing logic

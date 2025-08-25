@@ -29,7 +29,7 @@ except Exception:
 
 from .models import (
     List, ListItem, ListTemplate, ListCategory, 
-    ListShare, ListActivity, ListAnalytics
+    ListActivity, ListAnalytics
 )
 
 logger = logging.getLogger(__name__)

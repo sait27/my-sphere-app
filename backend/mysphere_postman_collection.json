@@ -1,0 +1,278 @@
+{
+  "info": {
+    "name": "MySphere Backend API",
+    "description": "Postman collection for all backend endpoints, organized by category and subcategory.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "base_url", "value": "http://127.0.0.1:8000"},
+    {"key": "token", "value": ""}
+  ],
+  "item": [
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/api/v1/users/register/", "host": ["{{base_url}}"], "path": ["api", "v1", "users", "register"]},
+            "body": {"mode": "raw", "raw": "{\n  \"username\": \"john_doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"your_password\"\n}"},
+            "header": [{"key": "Content-Type", "value": "application/json"}]
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/api/v1/users/login/", "host": ["{{base_url}}"], "path": ["api", "v1", "users", "login"]},
+            "body": {"mode": "raw", "raw": "{\n  \"username\": \"john_doe\",\n  \"password\": \"your_password\"\n}"},
+            "header": [{"key": "Content-Type", "value": "application/json"}]
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/api/v1/users/login/refresh/", "host": ["{{base_url}}"], "path": ["api", "v1", "users", "login", "refresh"]},
+            "body": {"mode": "raw", "raw": "{\n  \"refresh\": \"<refresh_token>\"\n}"},
+            "header": [{"key": "Content-Type", "value": "application/json"}]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expenses",
+      "item": [
+        {
+          "name": "List & Create",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/api/v1/expenses/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses"]},
+            "body": {"mode": "raw", "raw": "{\n  \"amount\": 100.0,\n  \"category\": 1,\n  \"vendor\": \"Amazon\",\n  \"description\": \"Office supplies\",\n  \"transaction_date\": \"2025-08-25\",\n  \"payment_method\": \"credit_card\"\n}"},
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ]
+          }
+        },
+        {
+          "name": "Summary",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{base_url}}/api/v1/expenses/summary/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "summary"]},
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Bulk Actions",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/api/v1/expenses/bulk/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "bulk"]},
+            "body": {"mode": "raw", "raw": "{\n  \"operation\": \"delete\",\n  \"expense_ids\": [1, 2, 3]\n}"},
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ]
+          }
+        },
+        {
+          "name": "Export",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/api/v1/expenses/export/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "export"]},
+            "body": {"mode": "raw", "raw": "{\n  \"expense_ids\": [1, 2, 3],\n  \"format\": \"csv\"\n}"},
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ]
+          }
+        },
+        {
+          "name": "Analytics",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{base_url}}/api/v1/expenses/analytics/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "analytics"]},
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "AI Insights",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{base_url}}/api/v1/expenses/ai-insights/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "ai-insights"]},
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Advanced Analytics",
+          "item": [
+            {
+              "name": "Overview",
+              "request": {
+                "method": "GET",
+                "url": {"raw": "{{base_url}}/api/v1/expenses/advanced-analytics/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "advanced-analytics"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Detail",
+              "request": {
+                "method": "GET",
+                "url": {"raw": "{{base_url}}/api/v1/expenses/advanced/analytics/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "advanced", "analytics"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Budget Analysis",
+              "request": {
+                "method": "GET",
+                "url": {"raw": "{{base_url}}/api/v1/expenses/advanced/budget_analysis/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "advanced", "budget_analysis"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Trends Analysis",
+              "request": {
+                "method": "GET",
+                "url": {"raw": "{{base_url}}/api/v1/expenses/advanced/trends/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "advanced", "trends"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Expense Detail",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{base_url}}/api/v1/expenses/:expense_id/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", ":expense_id"]},
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expenses",
+      "item": [
+        {
+          "name": "List & Create",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/api/v1/expenses/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses"]},
+            "body": {"mode": "raw", "raw": "{\n  \"amount\": 100.0,\n  \"category\": 1,\n  \"vendor\": \"Amazon\",\n  \"description\": \"Office supplies\",\n  \"transaction_date\": \"2025-08-25\",\n  \"payment_method\": \"credit_card\"\n}"},
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ]
+          }
+        },
+        {
+          "name": "Detail",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{base_url}}/api/v1/expenses/:expense_id/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", ":expense_id"]},
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Summary",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{base_url}}/api/v1/expenses/summary/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "summary"]},
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Bulk Actions",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/api/v1/expenses/bulk/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "bulk"]},
+            "body": {"mode": "raw", "raw": "{\n  \"operation\": \"delete\",\n  \"expense_ids\": [1, 2, 3]\n}"},
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ]
+          }
+        },
+        {
+          "name": "Export",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/api/v1/expenses/export/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "export"]},
+            "body": {"mode": "raw", "raw": "{\n  \"expense_ids\": [1, 2, 3],\n  \"format\": \"csv\"\n}"},
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Budgets",
+      "item": [
+        {
+          "name": "Current Budget",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{base_url}}/api/v1/budgets/current/", "host": ["{{base_url}}"], "path": ["api", "v1", "budgets", "current"]},
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lists",
+      "item": [
+        {
+          "name": "List Operations",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/api/v1/lists/", "host": ["{{base_url}}"], "path": ["api", "v1", "lists"]},
+            "body": {"mode": "raw", "raw": "{\n  \"name\": \"Groceries\",\n  \"description\": \"Weekly grocery shopping\",\n  \"category\": 1,\n  \"priority\": \"high\"\n}"},
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ]
+          }
+        },
+        {
+          "name": "Bulk Operations",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/api/v1/lists/bulk/", "host": ["{{base_url}}"], "path": ["api", "v1", "lists", "bulk"]},
+            "body": {"mode": "raw", "raw": "{\n  \"operation\": \"archive\",\n  \"list_ids\": [1, 2]\n}"},
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ]
+          }
+        },
+        {
+          "name": "Bulk Item Operations",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/api/v1/lists/bulk-operations/", "host": ["{{base_url}}"], "path": ["api", "v1", "lists", "bulk-operations"]},
+            "body": {"mode": "raw", "raw": "{\n  \"operation\": \"complete\",\n  \"item_ids\": [10, 11, 12],\n  \"list_id\": 1\n}"},
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ]
+          }
+        },
+        {
+          "name": "Export",
+          "request": {
+            "method": "POST",
+            "url": {"raw": "{{base_url}}/api/v1/lists/export/", "host": ["{{base_url}}"], "path": ["api", "v1", "lists", "export"]},
+            "body": {"mode": "raw", "raw": "{\n  \"list_ids\": [1, 2],\n  \"format\": \"csv\"\n}"},
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

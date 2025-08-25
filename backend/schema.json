@@ -1,0 +1,5902 @@
+openapi: 3.0.3
+info:
+  title: MySphere API
+  version: 1.0.0
+  description: OpenAPI schema for the MySphere backend APIs
+paths:
+  /api/schema/:
+    get:
+      operationId: api_schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/budgets/current/:
+    get:
+      operationId: api_v1_budgets_current_retrieve
+      tags:
+      - Budgets
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_v1_budgets_current_create
+      tags:
+      - Budgets
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/expenses/:
+    get:
+      operationId: api_v1_expenses_retrieve
+      tags:
+      - Expenses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_v1_expenses_create
+      tags:
+      - Expenses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/expenses/{expense_id}/:
+    get:
+      operationId: api_v1_expenses_retrieve_2
+      description: This view handles getting, updating, and deleting a single expense.
+      parameters:
+      - in: path
+        name: expense_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Expenses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+    put:
+      operationId: api_v1_expenses_update
+      description: This view handles getting, updating, and deleting a single expense.
+      parameters:
+      - in: path
+        name: expense_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Expenses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Expense'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Expense'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Expense'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+    patch:
+      operationId: api_v1_expenses_partial_update
+      description: This view handles getting, updating, and deleting a single expense.
+      parameters:
+      - in: path
+        name: expense_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Expenses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedExpense'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedExpense'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedExpense'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+          description: ''
+    delete:
+      operationId: api_v1_expenses_destroy
+      description: This view handles getting, updating, and deleting a single expense.
+      parameters:
+      - in: path
+        name: expense_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Expenses
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/expenses/advanced-analytics/:
+    get:
+      operationId: api_v1_expenses_advanced_analytics_retrieve
+      description: Advanced analytics endpoint with predictive insights
+      tags:
+      - Expenses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/expenses/advanced/analytics/:
+    get:
+      operationId: api_v1_expenses_advanced_analytics_retrieve_2
+      description: Advanced analytics endpoint with predictive insights
+      tags:
+      - Expenses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/expenses/advanced/budget_analysis/:
+    get:
+      operationId: api_v1_expenses_advanced_budget_analysis_retrieve
+      description: Budget analysis endpoint
+      tags:
+      - Expenses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/expenses/advanced/trends/:
+    get:
+      operationId: api_v1_expenses_advanced_trends_retrieve
+      description: Trends analysis endpoint
+      tags:
+      - Expenses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/expenses/ai-insights/:
+    get:
+      operationId: api_v1_expenses_ai_insights_retrieve
+      description: Generate AI-powered insights for the user
+      tags:
+      - Expenses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/expenses/analytics/:
+    get:
+      operationId: api_v1_expenses_analytics_retrieve
+      tags:
+      - Expenses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/expenses/bulk/:
+    post:
+      operationId: api_v1_expenses_bulk_create
+      description: Handle bulk operations on expenses
+      tags:
+      - Expenses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/expenses/export/:
+    post:
+      operationId: api_v1_expenses_export_create
+      description: Export expenses to CSV format
+      tags:
+      - Expenses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/expenses/summary/:
+    get:
+      operationId: api_v1_expenses_summary_retrieve
+      tags:
+      - Expenses
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/integrations/google/callback/:
+    get:
+      operationId: api_v1_integrations_google_callback_retrieve
+      tags:
+      - Integrations
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/integrations/google/connect/:
+    get:
+      operationId: api_v1_integrations_google_connect_retrieve
+      tags:
+      - Integrations
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/integrations/google/status/:
+    get:
+      operationId: api_v1_integrations_google_status_retrieve
+      tags:
+      - Integrations
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    delete:
+      operationId: api_v1_integrations_google_status_destroy
+      tags:
+      - Integrations
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/lists/:
+    get:
+      operationId: api_v1_lists_list
+      description: Enhanced List ViewSet with service layer and advanced features
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/List'
+          description: ''
+    post:
+      operationId: api_v1_lists_create
+      description: Enhanced List ViewSet with service layer and advanced features
+      tags:
+      - Lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/List'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/List'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/List'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/List'
+          description: ''
+  /api/v1/lists/{list_id}/add_items/:
+    post:
+      operationId: api_v1_lists_add_items_create_2
+      parameters:
+      - in: path
+        name: list_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/lists/{list_id}/smart_completion/:
+    post:
+      operationId: api_v1_lists_smart_completion_create
+      description: Detect if list is logically complete and suggest next actions
+      parameters:
+      - in: path
+        name: list_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/lists/{list_id}/suggestions/:
+    get:
+      operationId: api_v1_lists_suggestions_retrieve
+      description: Get AI-powered suggestions for list improvement
+      parameters:
+      - in: path
+        name: list_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/lists/{id}/:
+    get:
+      operationId: api_v1_lists_retrieve
+      description: Enhanced List ViewSet with service layer and advanced features
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/List'
+          description: ''
+    put:
+      operationId: api_v1_lists_update
+      description: Enhanced List ViewSet with service layer and advanced features
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/List'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/List'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/List'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/List'
+          description: ''
+    patch:
+      operationId: api_v1_lists_partial_update
+      description: Enhanced List ViewSet with service layer and advanced features
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedList'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedList'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedList'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/List'
+          description: ''
+    delete:
+      operationId: api_v1_lists_destroy
+      description: Enhanced List ViewSet with service layer and advanced features
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/lists/{id}/add_items/:
+    post:
+      operationId: api_v1_lists_add_items_create
+      description: Add items using AI parsing
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/List'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/List'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/List'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/List'
+          description: ''
+  /api/v1/lists/{id}/analytics/:
+    get:
+      operationId: api_v1_lists_analytics_retrieve_2
+      description: Get analytics for a specific list
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/List'
+          description: ''
+  /api/v1/lists/{id}/create_item/:
+    post:
+      operationId: api_v1_lists_create_item_create
+      description: Create a new item in the specified list
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/List'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/List'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/List'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/List'
+          description: ''
+  /api/v1/lists/{id}/duplicate/:
+    post:
+      operationId: api_v1_lists_duplicate_create
+      description: Duplicate a list with a new name
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/List'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/List'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/List'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/List'
+          description: ''
+  /api/v1/lists/agenda/:
+    get:
+      operationId: api_v1_lists_agenda_retrieve
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/lists/analytics/:
+    get:
+      operationId: api_v1_lists_analytics_retrieve
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/lists/bulk/:
+    post:
+      operationId: api_v1_lists_bulk_create
+      description: Handle bulk operations on list items
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/lists/bulk-operations/:
+    post:
+      operationId: api_v1_lists_bulk_operations_create
+      description: Handle bulk operations on lists
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/lists/bulk_operations/:
+    post:
+      operationId: api_v1_lists_bulk_operations_create_2
+      description: Handle bulk operations on lists
+      tags:
+      - Lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/List'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/List'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/List'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/List'
+          description: ''
+  /api/v1/lists/export/:
+    post:
+      operationId: api_v1_lists_export_create
+      description: Export lists in various formats
+      tags:
+      - Lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/List'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/List'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/List'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/List'
+          description: ''
+  /api/v1/lists/items/{item_id}/:
+    get:
+      operationId: api_v1_lists_items_retrieve
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListItem'
+          description: ''
+    put:
+      operationId: api_v1_lists_items_update
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ListItem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ListItem'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListItem'
+          description: ''
+    patch:
+      operationId: api_v1_lists_items_partial_update
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedListItem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedListItem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedListItem'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListItem'
+          description: ''
+    delete:
+      operationId: api_v1_lists_items_destroy
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/lists/templates/:
+    get:
+      operationId: api_v1_lists_templates_list
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ListTemplate'
+          description: ''
+    post:
+      operationId: api_v1_lists_templates_create
+      tags:
+      - Lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ListTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ListTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListTemplate'
+          description: ''
+  /api/v1/lists/templates/{id}/:
+    get:
+      operationId: api_v1_lists_templates_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListTemplate'
+          description: ''
+    put:
+      operationId: api_v1_lists_templates_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ListTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ListTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListTemplate'
+          description: ''
+    delete:
+      operationId: api_v1_lists_templates_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/lists/templates/{id}/create/:
+    post:
+      operationId: api_v1_lists_templates_create_create
+      description: Create a new list from this template
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Lists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ListTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ListTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListTemplate'
+          description: ''
+  /api/v1/todos/activity-logs/:
+    get:
+      operationId: api_v1_todos_activity_logs_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskActivityLog'
+          description: ''
+  /api/v1/todos/activity-logs/{id}/:
+    get:
+      operationId: api_v1_todos_activity_logs_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskActivityLog'
+          description: ''
+  /api/v1/todos/attachments/:
+    get:
+      operationId: api_v1_todos_attachments_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskAttachment'
+          description: ''
+    post:
+      operationId: api_v1_todos_attachments_create
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskAttachment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskAttachment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskAttachment'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskAttachment'
+          description: ''
+  /api/v1/todos/attachments/{id}/:
+    get:
+      operationId: api_v1_todos_attachments_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskAttachment'
+          description: ''
+    put:
+      operationId: api_v1_todos_attachments_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskAttachment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskAttachment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskAttachment'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskAttachment'
+          description: ''
+    patch:
+      operationId: api_v1_todos_attachments_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskAttachment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskAttachment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskAttachment'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskAttachment'
+          description: ''
+    delete:
+      operationId: api_v1_todos_attachments_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/todos/comments/:
+    get:
+      operationId: api_v1_todos_comments_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskComment'
+          description: ''
+    post:
+      operationId: api_v1_todos_comments_create
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskComment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskComment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskComment'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskComment'
+          description: ''
+  /api/v1/todos/comments/{id}/:
+    get:
+      operationId: api_v1_todos_comments_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskComment'
+          description: ''
+    put:
+      operationId: api_v1_todos_comments_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskComment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskComment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskComment'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskComment'
+          description: ''
+    patch:
+      operationId: api_v1_todos_comments_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskComment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskComment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskComment'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskComment'
+          description: ''
+    delete:
+      operationId: api_v1_todos_comments_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/todos/custom-fields/:
+    get:
+      operationId: api_v1_todos_custom_fields_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskCustomField'
+          description: ''
+    post:
+      operationId: api_v1_todos_custom_fields_create
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCustomField'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskCustomField'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskCustomField'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCustomField'
+          description: ''
+  /api/v1/todos/custom-fields/{id}/:
+    get:
+      operationId: api_v1_todos_custom_fields_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCustomField'
+          description: ''
+    put:
+      operationId: api_v1_todos_custom_fields_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCustomField'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskCustomField'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskCustomField'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCustomField'
+          description: ''
+    patch:
+      operationId: api_v1_todos_custom_fields_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskCustomField'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskCustomField'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskCustomField'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCustomField'
+          description: ''
+    delete:
+      operationId: api_v1_todos_custom_fields_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/todos/goals/:
+    get:
+      operationId: api_v1_todos_goals_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Goal'
+          description: ''
+    post:
+      operationId: api_v1_todos_goals_create
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Goal'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Goal'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Goal'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+          description: ''
+  /api/v1/todos/goals/{id}/:
+    get:
+      operationId: api_v1_todos_goals_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+          description: ''
+    put:
+      operationId: api_v1_todos_goals_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Goal'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Goal'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Goal'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+          description: ''
+    patch:
+      operationId: api_v1_todos_goals_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedGoal'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedGoal'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedGoal'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+          description: ''
+    delete:
+      operationId: api_v1_todos_goals_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/todos/goals/{id}/generate_ai_insights/:
+    post:
+      operationId: api_v1_todos_goals_generate_ai_insights_create
+      description: Generate AI insights for a specific goal
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Goal'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Goal'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Goal'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Goal'
+          description: ''
+  /api/v1/todos/insights/:
+    get:
+      operationId: api_v1_todos_insights_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AIInsight'
+          description: ''
+  /api/v1/todos/insights/{id}/:
+    get:
+      operationId: api_v1_todos_insights_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIInsight'
+          description: ''
+  /api/v1/todos/insights/{id}/dismiss/:
+    post:
+      operationId: api_v1_todos_insights_dismiss_create
+      description: Dismiss an AI insight
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIInsight'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AIInsight'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AIInsight'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIInsight'
+          description: ''
+  /api/v1/todos/insights/generate_insights/:
+    post:
+      operationId: api_v1_todos_insights_generate_insights_create
+      description: Generate new AI insights for the user
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIInsight'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AIInsight'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AIInsight'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIInsight'
+          description: ''
+  /api/v1/todos/notes/:
+    get:
+      operationId: api_v1_todos_notes_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskNote'
+          description: ''
+    post:
+      operationId: api_v1_todos_notes_create
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskNote'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskNote'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskNote'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskNote'
+          description: ''
+  /api/v1/todos/notes/{id}/:
+    get:
+      operationId: api_v1_todos_notes_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskNote'
+          description: ''
+    put:
+      operationId: api_v1_todos_notes_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskNote'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskNote'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskNote'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskNote'
+          description: ''
+    patch:
+      operationId: api_v1_todos_notes_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskNote'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskNote'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskNote'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskNote'
+          description: ''
+    delete:
+      operationId: api_v1_todos_notes_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/todos/recurring-templates/:
+    get:
+      operationId: api_v1_todos_recurring_templates_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecurringTaskTemplate'
+          description: ''
+    post:
+      operationId: api_v1_todos_recurring_templates_create
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecurringTaskTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecurringTaskTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecurringTaskTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringTaskTemplate'
+          description: ''
+  /api/v1/todos/recurring-templates/{id}/:
+    get:
+      operationId: api_v1_todos_recurring_templates_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringTaskTemplate'
+          description: ''
+    put:
+      operationId: api_v1_todos_recurring_templates_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecurringTaskTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecurringTaskTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecurringTaskTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringTaskTemplate'
+          description: ''
+    patch:
+      operationId: api_v1_todos_recurring_templates_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRecurringTaskTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRecurringTaskTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRecurringTaskTemplate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringTaskTemplate'
+          description: ''
+    delete:
+      operationId: api_v1_todos_recurring_templates_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/todos/recurring-templates/{id}/generate_tasks/:
+    post:
+      operationId: api_v1_todos_recurring_templates_generate_tasks_create
+      description: Generate tasks from recurring template
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecurringTaskTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RecurringTaskTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RecurringTaskTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringTaskTemplate'
+          description: ''
+  /api/v1/todos/reminders/:
+    get:
+      operationId: api_v1_todos_reminders_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskReminder'
+          description: ''
+    post:
+      operationId: api_v1_todos_reminders_create
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskReminder'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskReminder'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskReminder'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskReminder'
+          description: ''
+  /api/v1/todos/reminders/{id}/:
+    get:
+      operationId: api_v1_todos_reminders_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskReminder'
+          description: ''
+    put:
+      operationId: api_v1_todos_reminders_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskReminder'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskReminder'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskReminder'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskReminder'
+          description: ''
+    patch:
+      operationId: api_v1_todos_reminders_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskReminder'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskReminder'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskReminder'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskReminder'
+          description: ''
+    delete:
+      operationId: api_v1_todos_reminders_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/todos/subtasks/:
+    get:
+      operationId: api_v1_todos_subtasks_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Subtask'
+          description: ''
+    post:
+      operationId: api_v1_todos_subtasks_create
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subtask'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Subtask'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Subtask'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subtask'
+          description: ''
+  /api/v1/todos/subtasks/{id}/:
+    get:
+      operationId: api_v1_todos_subtasks_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subtask'
+          description: ''
+    put:
+      operationId: api_v1_todos_subtasks_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subtask'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Subtask'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Subtask'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subtask'
+          description: ''
+    patch:
+      operationId: api_v1_todos_subtasks_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSubtask'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSubtask'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSubtask'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subtask'
+          description: ''
+    delete:
+      operationId: api_v1_todos_subtasks_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/todos/subtasks/{id}/toggle_complete/:
+    post:
+      operationId: api_v1_todos_subtasks_toggle_complete_create
+      description: Toggle completion status of subtask
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subtask'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Subtask'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Subtask'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subtask'
+          description: ''
+  /api/v1/todos/tags/:
+    get:
+      operationId: api_v1_todos_tags_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskTag'
+          description: ''
+    post:
+      operationId: api_v1_todos_tags_create
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTag'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskTag'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskTag'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTag'
+          description: ''
+  /api/v1/todos/tags/{id}/:
+    get:
+      operationId: api_v1_todos_tags_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTag'
+          description: ''
+    put:
+      operationId: api_v1_todos_tags_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTag'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskTag'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskTag'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTag'
+          description: ''
+    patch:
+      operationId: api_v1_todos_tags_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskTag'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskTag'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskTag'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTag'
+          description: ''
+    delete:
+      operationId: api_v1_todos_tags_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/todos/tags/{id}/assign_to_task/:
+    post:
+      operationId: api_v1_todos_tags_assign_to_task_create
+      description: Assign this tag to a task
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTag'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskTag'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskTag'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTag'
+          description: ''
+  /api/v1/todos/tasks/:
+    get:
+      operationId: api_v1_todos_tasks_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+          description: ''
+    post:
+      operationId: api_v1_todos_tasks_create
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Task'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Task'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+  /api/v1/todos/tasks/{id}/:
+    get:
+      operationId: api_v1_todos_tasks_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+    put:
+      operationId: api_v1_todos_tasks_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Task'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Task'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+    patch:
+      operationId: api_v1_todos_tasks_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTask'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTask'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTask'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+    delete:
+      operationId: api_v1_todos_tasks_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/todos/tasks/{id}/add_note/:
+    post:
+      operationId: api_v1_todos_tasks_add_note_create
+      description: Add a note to a task
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Task'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Task'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+  /api/v1/todos/tasks/{id}/delete_attachment/:
+    delete:
+      operationId: api_v1_todos_tasks_delete_attachment_destroy
+      description: Delete a file attachment
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/todos/tasks/{id}/update_ai_data/:
+    post:
+      operationId: api_v1_todos_tasks_update_ai_data_create
+      description: Refresh AI data for a task
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Task'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Task'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+  /api/v1/todos/tasks/{id}/upload_attachment/:
+    post:
+      operationId: api_v1_todos_tasks_upload_attachment_create
+      description: Upload a file attachment to a task
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Task'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Task'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+  /api/v1/todos/tasks/create_from_natural_language/:
+    post:
+      operationId: api_v1_todos_tasks_create_from_natural_language_create
+      description: Create task from natural language input
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Task'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Task'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+  /api/v1/todos/tasks/dashboard_stats/:
+    get:
+      operationId: api_v1_todos_tasks_dashboard_stats_retrieve
+      description: Get dashboard statistics
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+  /api/v1/todos/tasks/smart_suggestions/:
+    get:
+      operationId: api_v1_todos_tasks_smart_suggestions_retrieve
+      description: Get AI-powered task suggestions
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+  /api/v1/todos/templates/:
+    get:
+      operationId: api_v1_todos_templates_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskTemplate'
+          description: ''
+    post:
+      operationId: api_v1_todos_templates_create
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTemplate'
+          description: ''
+  /api/v1/todos/templates/{id}/:
+    get:
+      operationId: api_v1_todos_templates_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTemplate'
+          description: ''
+    put:
+      operationId: api_v1_todos_templates_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTemplate'
+          description: ''
+    patch:
+      operationId: api_v1_todos_templates_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTaskTemplate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTemplate'
+          description: ''
+    delete:
+      operationId: api_v1_todos_templates_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/todos/templates/{id}/create_task/:
+    post:
+      operationId: api_v1_todos_templates_create_task_create
+      description: Create a task from this template
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTemplate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskTemplate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskTemplate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTemplate'
+          description: ''
+  /api/v1/todos/time-entries/:
+    get:
+      operationId: api_v1_todos_time_entries_list
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TimeEntry'
+          description: ''
+    post:
+      operationId: api_v1_todos_time_entries_create
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeEntry'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TimeEntry'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TimeEntry'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntry'
+          description: ''
+  /api/v1/todos/time-entries/{id}/:
+    get:
+      operationId: api_v1_todos_time_entries_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntry'
+          description: ''
+    put:
+      operationId: api_v1_todos_time_entries_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeEntry'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TimeEntry'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TimeEntry'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntry'
+          description: ''
+    patch:
+      operationId: api_v1_todos_time_entries_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTimeEntry'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTimeEntry'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTimeEntry'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntry'
+          description: ''
+    delete:
+      operationId: api_v1_todos_time_entries_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/todos/time-entries/{id}/stop_timer/:
+    post:
+      operationId: api_v1_todos_time_entries_stop_timer_create
+      description: Stop a running timer
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeEntry'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TimeEntry'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TimeEntry'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntry'
+          description: ''
+  /api/v1/todos/time-entries/start_timer/:
+    post:
+      operationId: api_v1_todos_time_entries_start_timer_create
+      description: Start a timer for a task
+      tags:
+      - Todos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeEntry'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TimeEntry'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TimeEntry'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeEntry'
+          description: ''
+  /api/v1/users/login/:
+    post:
+      operationId: api_v1_users_login_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/v1/users/login/refresh/:
+    post:
+      operationId: api_v1_users_login_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/users/register/:
+    post:
+      operationId: api_v1_users_register_create
+      tags:
+      - Users
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+components:
+  schemas:
+    AIInsight:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        insight_type:
+          enum:
+          - productivity
+          - priority
+          - scheduling
+          - goal_progress
+          - habit
+          - integration
+          type: string
+          description: |-
+            * `productivity` - Productivity
+            * `priority` - Priority Suggestion
+            * `scheduling` - Scheduling
+            * `goal_progress` - Goal Progress
+            * `habit` - Habit Formation
+            * `integration` - Cross-module Integration
+        title:
+          type: string
+          maxLength: 200
+        content:
+          type: string
+        confidence_score:
+          type: number
+          format: double
+          readOnly: true
+        is_actionable:
+          type: boolean
+        is_dismissed:
+          type: boolean
+        related_task:
+          type: integer
+          nullable: true
+        related_task_title:
+          type: string
+          readOnly: true
+        related_goal:
+          type: integer
+          nullable: true
+        related_goal_title:
+          type: string
+          readOnly: true
+        metadata:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - confidence_score
+      - content
+      - created_at
+      - id
+      - insight_type
+      - related_goal_title
+      - related_task_title
+      - title
+    Expense:
+      type: object
+      properties:
+        expense_id:
+          type: string
+          readOnly: true
+        display_id:
+          type: integer
+          readOnly: true
+        raw_text:
+          type: string
+          nullable: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        category:
+          type: string
+          maxLength: 100
+        custom_category:
+          allOf:
+          - $ref: '#/components/schemas/ExpenseCategory'
+          readOnly: true
+        vendor:
+          type: string
+          nullable: true
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+        transaction_date:
+          type: string
+          format: date
+        payment_method:
+          enum:
+          - cash
+          - card
+          - upi
+          - bank_transfer
+          - wallet
+          - other
+          type: string
+          description: |-
+            * `cash` - Cash
+            * `card` - Credit/Debit Card
+            * `upi` - UPI
+            * `bank_transfer` - Bank Transfer
+            * `wallet` - Digital Wallet
+            * `other` - Other
+        expense_type:
+          enum:
+          - personal
+          - business
+          - shared
+          - reimbursable
+          type: string
+          description: |-
+            * `personal` - Personal
+            * `business` - Business
+            * `shared` - Shared
+            * `reimbursable` - Reimbursable
+        location:
+          type: string
+          nullable: true
+          maxLength: 200
+        receipt_url:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 200
+        notes:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpenseTag'
+          readOnly: true
+        tax_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        discount_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        tip_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        is_recurring:
+          type: boolean
+        recurring_frequency:
+          enum:
+          - daily
+          - weekly
+          - monthly
+          - yearly
+          - ''
+          - null
+          type: string
+          description: |-
+            * `daily` - Daily
+            * `weekly` - Weekly
+            * `monthly` - Monthly
+            * `yearly` - Yearly
+          nullable: true
+        next_occurrence:
+          type: string
+          format: date
+          nullable: true
+        ai_confidence:
+          type: number
+          format: double
+        ai_suggestions:
+          type: object
+          additionalProperties: {}
+        is_verified:
+          type: boolean
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpenseAttachment'
+          readOnly: true
+        total_amount:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amount
+      - attachments
+      - category
+      - created_at
+      - custom_category
+      - display_id
+      - expense_id
+      - tags
+      - total_amount
+      - transaction_date
+      - updated_at
+    ExpenseAttachment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        file:
+          type: string
+          format: uri
+        filename:
+          type: string
+          maxLength: 255
+        file_type:
+          type: string
+          maxLength: 50
+        file_size:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        uploaded_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - file
+      - file_size
+      - file_type
+      - filename
+      - id
+      - uploaded_at
+    ExpenseCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        color:
+          type: string
+          maxLength: 7
+        icon:
+          type: string
+          maxLength: 50
+        budget_limit:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+    ExpenseTag:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        color:
+          type: string
+          maxLength: 7
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+    Goal:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        priority:
+          enum:
+          - low
+          - medium
+          - high
+          - critical
+          type: string
+          description: |-
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `critical` - Critical
+        status:
+          enum:
+          - active
+          - paused
+          - completed
+          - archived
+          type: string
+          description: |-
+            * `active` - Active
+            * `paused` - Paused
+            * `completed` - Completed
+            * `archived` - Archived
+        target_date:
+          type: string
+          format: date
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        ai_insights:
+          type: string
+        progress_percentage:
+          type: string
+          readOnly: true
+        task_count:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - progress_percentage
+      - task_count
+      - title
+      - updated_at
+    List:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+        list_type:
+          enum:
+          - checklist
+          - shopping
+          - todo
+          - inventory
+          - wishlist
+          - recipe
+          - packing
+          - other
+          type: string
+          description: |-
+            * `checklist` - Checklist
+            * `shopping` - Shopping List
+            * `todo` - To-Do List
+            * `inventory` - Inventory
+            * `wishlist` - Wishlist
+            * `recipe` - Recipe
+            * `packing` - Packing List
+            * `other` - Other
+        category:
+          type: integer
+          nullable: true
+        category_details:
+          allOf:
+          - $ref: '#/components/schemas/ListCategory'
+          readOnly: true
+        priority:
+          enum:
+          - low
+          - medium
+          - high
+          - urgent
+          type: string
+          description: |-
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `urgent` - Urgent
+        template:
+          type: integer
+          nullable: true
+        template_details:
+          allOf:
+          - $ref: '#/components/schemas/ListTemplate'
+          readOnly: true
+        auto_sort:
+          type: boolean
+        sort_by:
+          enum:
+          - name
+          - priority
+          - created
+          - price
+          - quantity
+          type: string
+          description: |-
+            * `name` - Name
+            * `priority` - Priority
+            * `created` - Created Date
+            * `price` - Price
+            * `quantity` - Quantity
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        is_archived:
+          type: boolean
+        completion_percentage:
+          type: number
+          format: double
+          readOnly: true
+        ai_suggestions:
+          type: object
+          additionalProperties: {}
+        estimated_cost:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        actual_cost:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListItem'
+          readOnly: true
+        recent_activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListActivity'
+          readOnly: true
+        items_count:
+          type: string
+          readOnly: true
+        completed_items_count:
+          type: string
+          readOnly: true
+        pending_items_count:
+          type: string
+          readOnly: true
+        total_estimated_cost:
+          type: string
+          readOnly: true
+        total_actual_cost:
+          type: string
+          readOnly: true
+      required:
+      - category_details
+      - completed_items_count
+      - completion_percentage
+      - created_at
+      - id
+      - items
+      - items_count
+      - name
+      - pending_items_count
+      - recent_activities
+      - template_details
+      - total_actual_cost
+      - total_estimated_cost
+      - updated_at
+    ListActivity:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        action:
+          enum:
+          - created
+          - updated
+          - item_added
+          - item_completed
+          - item_removed
+          - archived
+          type: string
+          description: |-
+            * `created` - Created
+            * `updated` - Updated
+            * `item_added` - Item Added
+            * `item_completed` - Item Completed
+            * `item_removed` - Item Removed
+            * `archived` - Archived
+        description:
+          type: string
+          maxLength: 255
+        metadata:
+          type: object
+          additionalProperties: {}
+        user:
+          type: integer
+        user_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - action
+      - created_at
+      - description
+      - id
+      - user
+      - user_name
+    ListCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        color:
+          type: string
+          maxLength: 7
+        icon:
+          type: string
+          maxLength: 50
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+    ListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        quantity:
+          type: string
+          nullable: true
+          maxLength: 50
+        unit:
+          type: string
+          nullable: true
+          maxLength: 20
+        priority:
+          enum:
+          - low
+          - medium
+          - high
+          - urgent
+          type: string
+          description: |-
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `urgent` - Urgent
+        category:
+          type: string
+          nullable: true
+          maxLength: 50
+        brand:
+          type: string
+          nullable: true
+          maxLength: 100
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        estimated_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        is_completed:
+          type: boolean
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        completed_by_name:
+          type: string
+          readOnly: true
+        is_recurring:
+          type: boolean
+        recurring_frequency:
+          enum:
+          - daily
+          - weekly
+          - monthly
+          - ''
+          - null
+          type: string
+          description: |-
+            * `daily` - Daily
+            * `weekly` - Weekly
+            * `monthly` - Monthly
+          nullable: true
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        notes:
+          type: string
+          nullable: true
+        url:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 200
+        image_url:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 200
+        auto_added:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - completed_at
+      - completed_by
+      - completed_by_name
+      - created_at
+      - id
+      - name
+      - updated_at
+    ListTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+        category:
+          type: string
+          maxLength: 50
+        is_public:
+          type: boolean
+        use_count:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+        user_name:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - use_count
+      - user
+      - user_name
+    PatchedExpense:
+      type: object
+      properties:
+        expense_id:
+          type: string
+          readOnly: true
+        display_id:
+          type: integer
+          readOnly: true
+        raw_text:
+          type: string
+          nullable: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        category:
+          type: string
+          maxLength: 100
+        custom_category:
+          allOf:
+          - $ref: '#/components/schemas/ExpenseCategory'
+          readOnly: true
+        vendor:
+          type: string
+          nullable: true
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+        transaction_date:
+          type: string
+          format: date
+        payment_method:
+          enum:
+          - cash
+          - card
+          - upi
+          - bank_transfer
+          - wallet
+          - other
+          type: string
+          description: |-
+            * `cash` - Cash
+            * `card` - Credit/Debit Card
+            * `upi` - UPI
+            * `bank_transfer` - Bank Transfer
+            * `wallet` - Digital Wallet
+            * `other` - Other
+        expense_type:
+          enum:
+          - personal
+          - business
+          - shared
+          - reimbursable
+          type: string
+          description: |-
+            * `personal` - Personal
+            * `business` - Business
+            * `shared` - Shared
+            * `reimbursable` - Reimbursable
+        location:
+          type: string
+          nullable: true
+          maxLength: 200
+        receipt_url:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 200
+        notes:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpenseTag'
+          readOnly: true
+        tax_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        discount_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        tip_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        is_recurring:
+          type: boolean
+        recurring_frequency:
+          enum:
+          - daily
+          - weekly
+          - monthly
+          - yearly
+          - ''
+          - null
+          type: string
+          description: |-
+            * `daily` - Daily
+            * `weekly` - Weekly
+            * `monthly` - Monthly
+            * `yearly` - Yearly
+          nullable: true
+        next_occurrence:
+          type: string
+          format: date
+          nullable: true
+        ai_confidence:
+          type: number
+          format: double
+        ai_suggestions:
+          type: object
+          additionalProperties: {}
+        is_verified:
+          type: boolean
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpenseAttachment'
+          readOnly: true
+        total_amount:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedGoal:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        priority:
+          enum:
+          - low
+          - medium
+          - high
+          - critical
+          type: string
+          description: |-
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `critical` - Critical
+        status:
+          enum:
+          - active
+          - paused
+          - completed
+          - archived
+          type: string
+          description: |-
+            * `active` - Active
+            * `paused` - Paused
+            * `completed` - Completed
+            * `archived` - Archived
+        target_date:
+          type: string
+          format: date
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        ai_insights:
+          type: string
+        progress_percentage:
+          type: string
+          readOnly: true
+        task_count:
+          type: string
+          readOnly: true
+    PatchedList:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+        list_type:
+          enum:
+          - checklist
+          - shopping
+          - todo
+          - inventory
+          - wishlist
+          - recipe
+          - packing
+          - other
+          type: string
+          description: |-
+            * `checklist` - Checklist
+            * `shopping` - Shopping List
+            * `todo` - To-Do List
+            * `inventory` - Inventory
+            * `wishlist` - Wishlist
+            * `recipe` - Recipe
+            * `packing` - Packing List
+            * `other` - Other
+        category:
+          type: integer
+          nullable: true
+        category_details:
+          allOf:
+          - $ref: '#/components/schemas/ListCategory'
+          readOnly: true
+        priority:
+          enum:
+          - low
+          - medium
+          - high
+          - urgent
+          type: string
+          description: |-
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `urgent` - Urgent
+        template:
+          type: integer
+          nullable: true
+        template_details:
+          allOf:
+          - $ref: '#/components/schemas/ListTemplate'
+          readOnly: true
+        auto_sort:
+          type: boolean
+        sort_by:
+          enum:
+          - name
+          - priority
+          - created
+          - price
+          - quantity
+          type: string
+          description: |-
+            * `name` - Name
+            * `priority` - Priority
+            * `created` - Created Date
+            * `price` - Price
+            * `quantity` - Quantity
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        is_archived:
+          type: boolean
+        completion_percentage:
+          type: number
+          format: double
+          readOnly: true
+        ai_suggestions:
+          type: object
+          additionalProperties: {}
+        estimated_cost:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        actual_cost:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListItem'
+          readOnly: true
+        recent_activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListActivity'
+          readOnly: true
+        items_count:
+          type: string
+          readOnly: true
+        completed_items_count:
+          type: string
+          readOnly: true
+        pending_items_count:
+          type: string
+          readOnly: true
+        total_estimated_cost:
+          type: string
+          readOnly: true
+        total_actual_cost:
+          type: string
+          readOnly: true
+    PatchedListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+        quantity:
+          type: string
+          nullable: true
+          maxLength: 50
+        unit:
+          type: string
+          nullable: true
+          maxLength: 20
+        priority:
+          enum:
+          - low
+          - medium
+          - high
+          - urgent
+          type: string
+          description: |-
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `urgent` - Urgent
+        category:
+          type: string
+          nullable: true
+          maxLength: 50
+        brand:
+          type: string
+          nullable: true
+          maxLength: 100
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        estimated_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        is_completed:
+          type: boolean
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        completed_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        completed_by_name:
+          type: string
+          readOnly: true
+        is_recurring:
+          type: boolean
+        recurring_frequency:
+          enum:
+          - daily
+          - weekly
+          - monthly
+          - ''
+          - null
+          type: string
+          description: |-
+            * `daily` - Daily
+            * `weekly` - Weekly
+            * `monthly` - Monthly
+          nullable: true
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        notes:
+          type: string
+          nullable: true
+        url:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 200
+        image_url:
+          type: string
+          format: uri
+          nullable: true
+          maxLength: 200
+        auto_added:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedRecurringTaskTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        priority:
+          enum:
+          - low
+          - medium
+          - high
+          - urgent
+          type: string
+          description: |-
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `urgent` - Urgent
+        task_type:
+          enum:
+          - personal
+          - work
+          - health
+          - finance
+          - learning
+          - social
+          - other
+          type: string
+          description: |-
+            * `personal` - Personal
+            * `work` - Work
+            * `health` - Health
+            * `finance` - Finance
+            * `learning` - Learning
+            * `social` - Social
+            * `other` - Other
+        estimated_duration:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        recurrence_type:
+          enum:
+          - daily
+          - weekly
+          - monthly
+          - yearly
+          - custom
+          type: string
+          description: |-
+            * `daily` - Daily
+            * `weekly` - Weekly
+            * `monthly` - Monthly
+            * `yearly` - Yearly
+            * `custom` - Custom
+        recurrence_interval:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Every X days/weeks/months
+        days_of_week:
+          type: string
+          description: Comma-separated days (0=Mon, 6=Sun)
+          maxLength: 20
+        day_of_month:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+          description: Day of month for monthly recurrence
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        max_occurrences:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        next_due_date:
+          type: string
+          readOnly: true
+    PatchedSubtask:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        is_completed:
+          type: boolean
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Order within parent task
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+    PatchedTask:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        goal:
+          type: integer
+          nullable: true
+        goal_title:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        priority:
+          enum:
+          - low
+          - medium
+          - high
+          - urgent
+          type: string
+          description: |-
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `urgent` - Urgent
+        status:
+          enum:
+          - pending
+          - in_progress
+          - completed
+          - cancelled
+          type: string
+          description: |-
+            * `pending` - Pending
+            * `in_progress` - In Progress
+            * `completed` - Completed
+            * `cancelled` - Cancelled
+        task_type:
+          enum:
+          - personal
+          - work
+          - health
+          - finance
+          - learning
+          - social
+          - other
+          type: string
+          description: |-
+            * `personal` - Personal
+            * `work` - Work
+            * `health` - Health
+            * `finance` - Finance
+            * `learning` - Learning
+            * `social` - Social
+            * `other` - Other
+        estimated_duration:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+          description: Estimated duration in minutes
+        actual_duration:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+          description: Actual duration in minutes
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        scheduled_for:
+          type: string
+          format: date-time
+          nullable: true
+        ai_priority_score:
+          type: number
+          format: double
+          readOnly: true
+        ai_suggestions:
+          type: string
+        ai_category:
+          type: string
+          maxLength: 50
+        related_expense_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        related_list_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskNote'
+          readOnly: true
+        dependencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskDependency'
+          readOnly: true
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskAttachment'
+          readOnly: true
+        tag_assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskTagAssignment'
+          readOnly: true
+        subtasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subtask'
+          readOnly: true
+        reminders:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskReminder'
+          readOnly: true
+        time_entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeEntry'
+          readOnly: true
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskComment'
+          readOnly: true
+        assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskAssignment'
+          readOnly: true
+        custom_field_values:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskCustomFieldValue'
+          readOnly: true
+        is_overdue:
+          type: string
+          readOnly: true
+        completion_percentage:
+          type: string
+          readOnly: true
+        total_time_spent:
+          type: string
+          readOnly: true
+    PatchedTaskAttachment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        file:
+          type: string
+          format: uri
+        file_name:
+          type: string
+          maxLength: 255
+        file_size:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: File size in bytes
+        file_type:
+          type: string
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedTaskComment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        content:
+          type: string
+        user_username:
+          type: string
+          readOnly: true
+        parent_comment:
+          type: integer
+          nullable: true
+        replies:
+          type: string
+          readOnly: true
+        is_edited:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedTaskCustomField:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        field_type:
+          enum:
+          - text
+          - number
+          - date
+          - datetime
+          - boolean
+          - select
+          - multi_select
+          - url
+          - email
+          type: string
+          description: |-
+            * `text` - Text
+            * `number` - Number
+            * `date` - Date
+            * `datetime` - DateTime
+            * `boolean` - Boolean
+            * `select` - Select
+            * `multi_select` - Multi Select
+            * `url` - URL
+            * `email` - Email
+        options:
+          type: string
+          description: JSON array of options for select fields
+        is_required:
+          type: boolean
+        is_active:
+          type: boolean
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedTaskNote:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        content:
+          type: string
+        is_ai_generated:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedTaskReminder:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        reminder_type:
+          enum:
+          - email
+          - push
+          - sms
+          - popup
+          type: string
+          description: |-
+            * `email` - Email
+            * `push` - Push Notification
+            * `sms` - SMS
+            * `popup` - Popup
+        remind_at:
+          type: string
+          format: date-time
+        message:
+          type: string
+        is_sent:
+          type: boolean
+          readOnly: true
+        sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedTaskTag:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        color:
+          type: string
+          description: Hex color code
+          maxLength: 7
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        task_count:
+          type: string
+          readOnly: true
+    PatchedTaskTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        title_template:
+          type: string
+          maxLength: 200
+        description_template:
+          type: string
+        default_priority:
+          enum:
+          - low
+          - medium
+          - high
+          - urgent
+          type: string
+          description: |-
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `urgent` - Urgent
+        default_type:
+          enum:
+          - personal
+          - work
+          - health
+          - finance
+          - learning
+          - social
+          - other
+          type: string
+          description: |-
+            * `personal` - Personal
+            * `work` - Work
+            * `health` - Health
+            * `finance` - Finance
+            * `learning` - Learning
+            * `social` - Social
+            * `other` - Other
+        estimated_duration:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        is_public:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedTimeEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        task:
+          type: integer
+        task_title:
+          type: string
+          readOnly: true
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+        duration_minutes:
+          type: integer
+          readOnly: true
+          nullable: true
+        duration_hours:
+          type: string
+          readOnly: true
+        description:
+          type: string
+        is_manual_entry:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    RecurringTaskTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        priority:
+          enum:
+          - low
+          - medium
+          - high
+          - urgent
+          type: string
+          description: |-
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `urgent` - Urgent
+        task_type:
+          enum:
+          - personal
+          - work
+          - health
+          - finance
+          - learning
+          - social
+          - other
+          type: string
+          description: |-
+            * `personal` - Personal
+            * `work` - Work
+            * `health` - Health
+            * `finance` - Finance
+            * `learning` - Learning
+            * `social` - Social
+            * `other` - Other
+        estimated_duration:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        recurrence_type:
+          enum:
+          - daily
+          - weekly
+          - monthly
+          - yearly
+          - custom
+          type: string
+          description: |-
+            * `daily` - Daily
+            * `weekly` - Weekly
+            * `monthly` - Monthly
+            * `yearly` - Yearly
+            * `custom` - Custom
+        recurrence_interval:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Every X days/weeks/months
+        days_of_week:
+          type: string
+          description: Comma-separated days (0=Mon, 6=Sun)
+          maxLength: 20
+        day_of_month:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+          description: Day of month for monthly recurrence
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        max_occurrences:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        next_due_date:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - next_due_date
+      - recurrence_type
+      - start_date
+      - title
+      - updated_at
+    Subtask:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        is_completed:
+          type: boolean
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Order within parent task
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - completed_at
+      - created_at
+      - id
+      - title
+      - updated_at
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        goal:
+          type: integer
+          nullable: true
+        goal_title:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+        priority:
+          enum:
+          - low
+          - medium
+          - high
+          - urgent
+          type: string
+          description: |-
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `urgent` - Urgent
+        status:
+          enum:
+          - pending
+          - in_progress
+          - completed
+          - cancelled
+          type: string
+          description: |-
+            * `pending` - Pending
+            * `in_progress` - In Progress
+            * `completed` - Completed
+            * `cancelled` - Cancelled
+        task_type:
+          enum:
+          - personal
+          - work
+          - health
+          - finance
+          - learning
+          - social
+          - other
+          type: string
+          description: |-
+            * `personal` - Personal
+            * `work` - Work
+            * `health` - Health
+            * `finance` - Finance
+            * `learning` - Learning
+            * `social` - Social
+            * `other` - Other
+        estimated_duration:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+          description: Estimated duration in minutes
+        actual_duration:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+          description: Actual duration in minutes
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        scheduled_for:
+          type: string
+          format: date-time
+          nullable: true
+        ai_priority_score:
+          type: number
+          format: double
+          readOnly: true
+        ai_suggestions:
+          type: string
+        ai_category:
+          type: string
+          maxLength: 50
+        related_expense_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        related_list_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskNote'
+          readOnly: true
+        dependencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskDependency'
+          readOnly: true
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskAttachment'
+          readOnly: true
+        tag_assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskTagAssignment'
+          readOnly: true
+        subtasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subtask'
+          readOnly: true
+        reminders:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskReminder'
+          readOnly: true
+        time_entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeEntry'
+          readOnly: true
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskComment'
+          readOnly: true
+        assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskAssignment'
+          readOnly: true
+        custom_field_values:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskCustomFieldValue'
+          readOnly: true
+        is_overdue:
+          type: string
+          readOnly: true
+        completion_percentage:
+          type: string
+          readOnly: true
+        total_time_spent:
+          type: string
+          readOnly: true
+      required:
+      - ai_priority_score
+      - assignments
+      - attachments
+      - comments
+      - completed_at
+      - completion_percentage
+      - created_at
+      - custom_field_values
+      - dependencies
+      - goal_title
+      - id
+      - is_overdue
+      - notes
+      - reminders
+      - subtasks
+      - tag_assignments
+      - time_entries
+      - title
+      - total_time_spent
+      - updated_at
+    TaskActivityLog:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        action:
+          enum:
+          - created
+          - updated
+          - status_changed
+          - priority_changed
+          - assigned
+          - commented
+          - attachment_added
+          - attachment_removed
+          - tag_added
+          - tag_removed
+          - subtask_added
+          - subtask_completed
+          - time_logged
+          type: string
+          description: |-
+            * `created` - Created
+            * `updated` - Updated
+            * `status_changed` - Status Changed
+            * `priority_changed` - Priority Changed
+            * `assigned` - Assigned
+            * `commented` - Commented
+            * `attachment_added` - Attachment Added
+            * `attachment_removed` - Attachment Removed
+            * `tag_added` - Tag Added
+            * `tag_removed` - Tag Removed
+            * `subtask_added` - Subtask Added
+            * `subtask_completed` - Subtask Completed
+            * `time_logged` - Time Logged
+        description:
+          type: string
+        user_username:
+          type: string
+          readOnly: true
+        metadata:
+          type: string
+          description: JSON data for additional context
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - action
+      - created_at
+      - description
+      - id
+      - user_username
+    TaskAssignment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        assigned_to:
+          type: integer
+        assigned_to_username:
+          type: string
+          readOnly: true
+        assigned_by:
+          type: integer
+          readOnly: true
+        assigned_by_username:
+          type: string
+          readOnly: true
+        role:
+          enum:
+          - assignee
+          - reviewer
+          - collaborator
+          - observer
+          type: string
+          description: |-
+            * `assignee` - Assignee
+            * `reviewer` - Reviewer
+            * `collaborator` - Collaborator
+            * `observer` - Observer
+        assigned_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_accepted:
+          type: boolean
+        accepted_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - assigned_at
+      - assigned_by
+      - assigned_by_username
+      - assigned_to
+      - assigned_to_username
+      - id
+    TaskAttachment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        file:
+          type: string
+          format: uri
+        file_name:
+          type: string
+          maxLength: 255
+        file_size:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: File size in bytes
+        file_type:
+          type: string
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - file
+      - file_name
+      - file_size
+      - file_type
+      - id
+    TaskComment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        content:
+          type: string
+        user_username:
+          type: string
+          readOnly: true
+        parent_comment:
+          type: integer
+          nullable: true
+        replies:
+          type: string
+          readOnly: true
+        is_edited:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content
+      - created_at
+      - id
+      - is_edited
+      - replies
+      - updated_at
+      - user_username
+    TaskCustomField:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        field_type:
+          enum:
+          - text
+          - number
+          - date
+          - datetime
+          - boolean
+          - select
+          - multi_select
+          - url
+          - email
+          type: string
+          description: |-
+            * `text` - Text
+            * `number` - Number
+            * `date` - Date
+            * `datetime` - DateTime
+            * `boolean` - Boolean
+            * `select` - Select
+            * `multi_select` - Multi Select
+            * `url` - URL
+            * `email` - Email
+        options:
+          type: string
+          description: JSON array of options for select fields
+        is_required:
+          type: boolean
+        is_active:
+          type: boolean
+        order:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - field_type
+      - id
+      - name
+    TaskCustomFieldValue:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        custom_field:
+          type: integer
+        field_name:
+          type: string
+          readOnly: true
+        field_type:
+          type: string
+          readOnly: true
+        value:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - custom_field
+      - field_name
+      - field_type
+      - id
+      - updated_at
+    TaskDependency:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        depends_on:
+          type: integer
+        depends_on_title:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - depends_on
+      - depends_on_title
+      - id
+    TaskNote:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        content:
+          type: string
+        is_ai_generated:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content
+      - created_at
+      - id
+    TaskReminder:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        reminder_type:
+          enum:
+          - email
+          - push
+          - sms
+          - popup
+          type: string
+          description: |-
+            * `email` - Email
+            * `push` - Push Notification
+            * `sms` - SMS
+            * `popup` - Popup
+        remind_at:
+          type: string
+          format: date-time
+        message:
+          type: string
+        is_sent:
+          type: boolean
+          readOnly: true
+        sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - is_sent
+      - remind_at
+      - sent_at
+    TaskTag:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        color:
+          type: string
+          description: Hex color code
+          maxLength: 7
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        task_count:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - task_count
+    TaskTagAssignment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        tag:
+          type: integer
+        tag_name:
+          type: string
+          readOnly: true
+        tag_color:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - tag
+      - tag_color
+      - tag_name
+    TaskTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        title_template:
+          type: string
+          maxLength: 200
+        description_template:
+          type: string
+        default_priority:
+          enum:
+          - low
+          - medium
+          - high
+          - urgent
+          type: string
+          description: |-
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `urgent` - Urgent
+        default_type:
+          enum:
+          - personal
+          - work
+          - health
+          - finance
+          - learning
+          - social
+          - other
+          type: string
+          description: |-
+            * `personal` - Personal
+            * `work` - Work
+            * `health` - Health
+            * `finance` - Finance
+            * `learning` - Learning
+            * `social` - Social
+            * `other` - Other
+        estimated_duration:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          nullable: true
+        is_public:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - title_template
+    TimeEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        task:
+          type: integer
+        task_title:
+          type: string
+          readOnly: true
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+        duration_minutes:
+          type: integer
+          readOnly: true
+          nullable: true
+        duration_hours:
+          type: string
+          readOnly: true
+        description:
+          type: string
+        is_manual_entry:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - duration_hours
+      - duration_minutes
+      - id
+      - start_time
+      - task
+      - task_title
+    TokenObtainPair:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - password
+      - refresh
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+tags:
+- name: Expenses
+  description: Endpoints for managing expenses
+- name: Users
+  description: User authentication and profile endpoints
+- name: Budgets
+  description: Budget management endpoints
+- name: Lists
+  description: List and list-item endpoints
+- name: Todos
+  description: Todo/task endpoints
+- name: Integrations
+  description: Third-party integration endpoints

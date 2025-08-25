@@ -23,7 +23,7 @@ import {
 const TodoCard = ({ 
   todo, 
   index, 
-  viewMode, 
+  viewMode,
   bulkMode, 
   isSelected, 
   onToggleSelection, 

@@ -5,7 +5,7 @@ import ExpensesPage from './pages/ExpensesPage';
 import ListsPageEnhanced from './pages/ListsPageEnhanced';
 import DashboardPage from './pages/DashboardPage';
 import SettingsPage from './pages/SettingsPage';
-import TodosPage from './pages/TodosPage';
+import AdvancedTodosPage from './pages/AdvancedTodosPage';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -43,7 +43,8 @@ function App() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="lists" element={<ListsPageEnhanced />} />
-        <Route path="todos" element={<TodosPage />} />
+        <Route path="todos" element={<AdvancedTodosPage />} />
+  {/* <Route path="dashboard/todos" element={<TodosDashboard />} /> */}
         <Route path="settings" element={<SettingsPage />} />
         {/* We can add more protected routes here later */}
       </Route>

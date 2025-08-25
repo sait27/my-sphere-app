@@ -12,6 +12,7 @@ export const useTodos = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTimer, setActiveTimer] = useState(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   const fetchTodos = useCallback(async () => {
     setLoading(true);
@@ -456,15 +457,21 @@ export const useTodos = () => {
 
   // Natural Language Processing
   const createTaskFromNaturalLanguage = useCallback(async (text) => {
+    setIsCreating(true); // Set loading state to true
     try {
       const response = await apiClient.post('/todos/tasks/create_from_natural_language/', {
         text
       });
       setTodos(prev => [response.data, ...prev]);
+      toast.success('Smart task created successfully!');
       return response.data;
     } catch (err) {
       console.error('Error creating task from natural language:', err);
+      // The toast is already here in your existing code, which is great.
+      toast.error(err.response?.data?.error || 'Failed to create task from description');
       throw new Error('Failed to create task from description');
+    } finally {
+      setIsCreating(false); // Set loading state to false
     }
   }, []);
 
@@ -517,6 +524,7 @@ export const useTodos = () => {
     recurringTemplates,
     customFields,
     loading,
+    isCreating,
     error,
     activeTimer,
     
