@@ -152,14 +152,36 @@
       ]
     },
     {
-      "name": "Expenses",
+  "name": "Todos",
+  "item": [
+    {
+      "name": "Tasks",
       "item": [
         {
-          "name": "List & Create",
+          "name": "List Tasks",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/todos/tasks/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "todos", "tasks"]
+            },
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Create Task",
           "request": {
             "method": "POST",
-            "url": {"raw": "{{base_url}}/api/v1/expenses/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses"]},
-            "body": {"mode": "raw", "raw": "{\n  \"amount\": 100.0,\n  \"category\": 1,\n  \"vendor\": \"Amazon\",\n  \"description\": \"Office supplies\",\n  \"transaction_date\": \"2025-08-25\",\n  \"payment_method\": \"credit_card\"\n}"},
+            "url": {
+              "raw": "{{base_url}}/api/v1/todos/tasks/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "todos", "tasks"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Finish the project report\",\n  \"due_date\": \"2025-09-15T18:00:00Z\",\n  \"priority\": \"high\"\n}"
+            },
             "header": [
               {"key": "Content-Type", "value": "application/json"},
               {"key": "Authorization", "value": "Bearer {{token}}"}
@@ -167,39 +189,30 @@
           }
         },
         {
-          "name": "Detail",
+          "name": "Retrieve Task",
           "request": {
             "method": "GET",
-            "url": {"raw": "{{base_url}}/api/v1/expenses/:expense_id/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", ":expense_id"]},
+            "url": {
+              "raw": "{{base_url}}/api/v1/todos/tasks/1/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "todos", "tasks", "1"]
+            },
             "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
           }
         },
         {
-          "name": "Summary",
+          "name": "Update Task",
           "request": {
-            "method": "GET",
-            "url": {"raw": "{{base_url}}/api/v1/expenses/summary/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "summary"]},
-            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
-          }
-        },
-        {
-          "name": "Bulk Actions",
-          "request": {
-            "method": "POST",
-            "url": {"raw": "{{base_url}}/api/v1/expenses/bulk/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "bulk"]},
-            "body": {"mode": "raw", "raw": "{\n  \"operation\": \"delete\",\n  \"expense_ids\": [1, 2, 3]\n}"},
-            "header": [
-              {"key": "Content-Type", "value": "application/json"},
-              {"key": "Authorization", "value": "Bearer {{token}}"}
-            ]
-          }
-        },
-        {
-          "name": "Export",
-          "request": {
-            "method": "POST",
-            "url": {"raw": "{{base_url}}/api/v1/expenses/export/", "host": ["{{base_url}}"], "path": ["api", "v1", "expenses", "export"]},
-            "body": {"mode": "raw", "raw": "{\n  \"expense_ids\": [1, 2, 3],\n  \"format\": \"csv\"\n}"},
+            "method": "PUT",
+            "url": {
+              "raw": "{{base_url}}/api/v1/todos/tasks/1/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "todos", "tasks", "1"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Finish the final project report\",\n  \"status\": \"in_progress\"\n}"
+            },
             "header": [
               {"key": "Content-Type", "value": "application/json"},
               {"key": "Authorization", "value": "Bearer {{token}}"}
@@ -208,6 +221,92 @@
         }
       ]
     },
+    {
+      "name": "Goals",
+      "item": [
+        {
+          "name": "List Goals",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/todos/goals/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "todos", "goals"]
+            },
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Create Goal",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/v1/todos/goals/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "todos", "goals"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Learn Django Rest Framework\",\n  \"description\": \"Complete the official tutorial and build a small project.\"\n}"
+            },
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI Engine",
+      "item": [
+        {
+          "name": "Parse Natural Language Task",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/v1/todos/ai/parse-task/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "todos", "ai", "parse-task"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"schedule a meeting with the team for tomorrow at 3pm\"\n}"
+            },
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ]
+          }
+        },
+        {
+          "name": "Get AI Suggestions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/todos/ai/suggestions/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "todos", "ai", "suggestions"]
+            },
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Get Productivity Insights",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/todos/ai/productivity-insights/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "todos", "ai", "productivity-insights"]
+            },
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        }
+      ]
+    }
+  ]
+},
     {
       "name": "Budgets",
       "item": [

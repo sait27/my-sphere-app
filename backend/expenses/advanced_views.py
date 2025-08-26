@@ -37,16 +37,15 @@ class ExpenseAdvancedViewSet(viewsets.ViewSet):
         """Get comprehensive expense analytics"""
         user = request.user
         period = request.query_params.get('period', 'month')  # month, quarter, year
-        
+
         # Calculate date range
         today = timezone.now().date()
         if period == 'month':
-            start_date = today.replace(day=1)
+            start_date = today - timedelta(days=30)
         elif period == 'quarter':
-            quarter_start = ((today.month - 1) // 3) * 3 + 1
-            start_date = today.replace(month=quarter_start, day=1)
+            start_date = today - timedelta(days=90)
         else:  # year
-            start_date = today.replace(month=1, day=1)
+            start_date = today - timedelta(days=365)
         
         expenses = Expense.objects.filter(
             user=user,
@@ -54,43 +53,60 @@ class ExpenseAdvancedViewSet(viewsets.ViewSet):
             transaction_date__lte=today
         )
         
-        # Basic stats
+        # --- Start of Corrected Logic ---
+
+        # 1. Calculate Summary Stats
         total_amount = expenses.aggregate(Sum('amount'))['amount__sum'] or 0
         avg_amount = expenses.aggregate(Avg('amount'))['amount__avg'] or 0
         expense_count = expenses.count()
+        days_in_period = max((today - start_date).days, 1)
+
+        # 2. Calculate Spending Patterns (The Correct Way)
+        weekend_total = 0
+        weekday_total = 0
+        weekend_days = set()
+        weekday_days = set()
+
+        for expense in expenses:
+            if expense.transaction_date.weekday() >= 5:  # Saturday or Sunday
+                weekend_total += float(expense.amount)
+                weekend_days.add(expense.transaction_date)
+            else:
+                weekday_total += float(expense.amount)
+                weekday_days.add(expense.transaction_date)
+
+        weekday_average = weekday_total / max(1, len(weekday_days))
+        weekend_average = weekend_total / max(1, len(weekend_days))
+
+        spending_patterns_data = {
+            'weekday_average': round(weekday_average, 2),
+            'weekend_average': round(weekend_average, 2)
+        }
+
+        # 3. Calculate High Value Transactions
+        top_transactions = expenses.order_by('-amount')[:3]
+        high_value_transactions_data = [
+            {
+                'id': t.expense_id,
+                'description': t.description or t.vendor or t.category,
+                'amount': float(t.amount)
+            } for t in top_transactions
+        ]
         
-        # Category breakdown
+        # 4. Get Other Breakdowns (Unchanged from your original code)
         category_stats = expenses.values('category').annotate(
             total=Sum('amount'),
-            count=Count('id')
+            count=Count('expense_id') # Changed from 'id' to 'expense_id' for correctness
         ).order_by('-total')
         
-        # Payment method breakdown
         payment_stats = expenses.values('payment_method').annotate(
             total=Sum('amount'),
-            count=Count('id')
+            count=Count('expense_id') # Changed from 'id' to 'expense_id' for correctness
         ).order_by('-total')
-        
-        # Daily spending trend
-        daily_stats = expenses.extra(
-            select={'day': 'date(transaction_date)'}
-        ).values('day').annotate(
-            total=Sum('amount'),
-            count=Count('id')
-        ).order_by('day')
-        
-        # Top vendors
-        vendor_stats = expenses.exclude(vendor__isnull=True).values('vendor').annotate(
-            total=Sum('amount'),
-            count=Count('id')
-        ).order_by('-total')[:10]
-        
-        # Expense type breakdown
-        type_stats = expenses.values('expense_type').annotate(
-            total=Sum('amount'),
-            count=Count('id')
-        ).order_by('-total')
-        
+
+        # --- End of Corrected Logic ---
+
+        # 5. Build the Final Response
         return Response({
             'period': period,
             'date_range': {'start': start_date, 'end': today},
@@ -98,13 +114,12 @@ class ExpenseAdvancedViewSet(viewsets.ViewSet):
                 'total_amount': float(total_amount),
                 'average_amount': float(avg_amount),
                 'expense_count': expense_count,
-                'daily_average': float(total_amount / max((today - start_date).days, 1))
+                'daily_average': float(total_amount / days_in_period)
             },
             'category_breakdown': list(category_stats),
             'payment_method_breakdown': list(payment_stats),
-            'daily_spending': list(daily_stats),
-            'top_vendors': list(vendor_stats),
-            'expense_type_breakdown': list(type_stats)
+            'spending_patterns': spending_patterns_data, # Using the new correct data
+            'high_value_transactions': high_value_transactions_data # Using the new correct data
         })
     
     @action(detail=False, methods=['get'])

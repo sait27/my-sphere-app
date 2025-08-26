@@ -1,3 +1,5 @@
+# backend/expenses/advanced_analytics.py
+
 from django.db.models import Sum, Count, Avg, Q, F
 from django.utils import timezone
 from datetime import datetime, timedelta
@@ -47,18 +49,57 @@ class AdvancedExpenseAnalytics:
             total=Sum('amount'),
             count=Count('expense_id')
         ).order_by('-total')
+        
+        # --- MODIFICATION: Added high_value_transactions to the return dictionary ---
         return {
             'summary': summary_data,  
-            'spending_trends': self._get_spending_trends(period_expenses, period),
             'category_insights': self._get_category_insights(period_expenses),
             'payment_method_breakdown': list(payment_method_breakdown),
+            'spending_patterns': self._get_spending_patterns(period_expenses),
+            'high_value_transactions': self._get_high_value_transactions(period_expenses),
             'budget_performance': self._get_budget_performance(period_expenses, period),
             'predictive_insights': self._get_predictive_insights(period_expenses, period),
             'savings_opportunities': self._get_savings_opportunities(period_expenses),
-            'spending_patterns': self._get_spending_patterns(period_expenses),
             'financial_health_score': self._calculate_financial_health_score(period_expenses, period),
-            'recommendations': self._generate_recommendations(period_expenses, period)
+            'recommendations': self._generate_recommendations(period_expenses, period),
+            'spending_trends': self._get_spending_trends(period_expenses, period)
         }
+
+    def _get_spending_patterns(self, expenses):
+        """Analyze spending patterns by day of week, time, etc."""
+
+        weekend_total = 0
+        weekday_total = 0
+        weekend_days = set()
+        weekday_days = set()
+
+        for expense in expenses:
+            if expense.transaction_date.weekday() >= 5:
+                weekend_total += float(expense.amount)
+                weekend_days.add(expense.transaction_date)
+            else:
+                weekday_total += float(expense.amount)
+                weekday_days.add(expense.transaction_date)
+                
+        weekday_average = weekday_total / max(1, len(weekday_days))
+        weekend_average = weekend_total / max(1, len(weekend_days))
+
+        return {
+            'weekday_average': round(weekday_average, 2),
+            'weekend_average': round(weekend_average, 2)
+        }
+
+    # --- MODIFICATION: This new function is added ---
+    def _get_high_value_transactions(self, expenses):
+        """Get the top 3 highest value transactions."""
+        transactions = expenses.order_by('-amount')[:3]
+        return [
+            {
+                'id': t.expense_id,
+                'description': t.description or t.vendor or t.category,
+                'amount': float(t.amount)
+            } for t in transactions
+        ]
 
     def _get_spending_trends(self, expenses, period):
         """Analyze spending trends over time"""

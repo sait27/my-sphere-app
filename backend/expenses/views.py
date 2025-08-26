@@ -6,6 +6,8 @@ import json
 import os
 import google.generativeai as genai
 from datetime import datetime,timedelta,date
+import csv
+from django.utils import timezone
 
 # Import the new tools from Django REST Framework
 from rest_framework.views import APIView
@@ -19,6 +21,7 @@ from .serializers import ExpenseSerializer
 from budgets.models import Budget
 from .ai_insights import AIInsightsEngine
 from .advanced_analytics import AdvancedExpenseAnalytics
+from .models import ExpenseAIInsight
 
 # --- AI Configuration (No changes here) ---
 try:
@@ -468,18 +471,39 @@ class ExpenseExportView(APIView):
 
 class AIInsightsView(APIView):
     permission_classes = [IsAuthenticated]
-    
-    def get(self, request):
-        """Generate AI-powered insights for the user"""
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        force_refresh = request.query_params.get('refresh', 'false').lower() == 'true'
+        cache_duration_minutes = 60 # Cache for 1 hour
+
         try:
-            insights_engine = AIInsightsEngine(request.user)
-            insights_data = insights_engine.generate_insights()
-            return Response(insights_data)
+            insight_cache = ExpenseAIInsight.objects.get(user=user)
+            is_stale = timezone.now() - insight_cache.generated_at > timedelta(minutes=cache_duration_minutes)
+
+            # If not forcing a refresh and the cache is not stale, return cached data
+            if not force_refresh and not is_stale:
+                return Response(insight_cache.insights_data)
+
+        except ExpenseAIInsight.DoesNotExist:
+            insight_cache = None # No cache exists yet
+
+        # If we are here, we need to generate new insights
+        try:
+            engine = AIInsightsEngine(user)
+            new_insights = engine.generate_insights()
+
+            # Save the new insights to the cache
+            if insight_cache:
+                insight_cache.insights_data = new_insights
+                insight_cache.save()
+            else:
+                ExpenseAIInsight.objects.create(user=user, insights_data=new_insights)
+
+            return Response(new_insights)
+
         except Exception as e:
-            return Response(
-                {'error': f'Failed to generate AI insights: {str(e)}'}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({"error": f"Failed to generate AI insights: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class AdvancedAnalyticsView(APIView):

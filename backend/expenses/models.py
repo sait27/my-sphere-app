@@ -202,3 +202,12 @@ class ExpenseAnalytics(models.Model):
     class Meta:
         unique_together = ['user', 'month']
         ordering = ['-month']
+
+class ExpenseAIInsight(models.Model):
+    """Stores generated AI insights for a user to serve as a cache."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='expense_ai_insight')
+    insights_data = models.JSONField()
+    generated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"AI Insight for {self.user.username} at {self.generated_at}"

@@ -6,45 +6,100 @@ from django.utils import timezone
 from .models import Expense
 from budgets.models import Budget
 from lists.models import List, ListItem
+import google.generativeai as genai
+import os
 
+GOOGLE_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
 
 class AIInsightsEngine:
     """AI-powered insights engine for financial data analysis"""
-    
+
     def __init__(self, user):
         self.user = user
         self.today = timezone.now().date()
         self.current_month = self.today.replace(day=1)
         self.last_month = (self.current_month - timedelta(days=1)).replace(day=1)
-        
+
     def generate_insights(self):
-        """Generate comprehensive AI insights for the user"""
-        insights = []
-        
-        # Get spending insights
-        insights.extend(self._get_spending_insights())
-        
-        # Get budget insights
-        insights.extend(self._get_budget_insights())
-        
-        # Get trend insights
-        insights.extend(self._get_trend_insights())
-        
-        # Get predictive insights
-        insights.extend(self._get_predictive_insights())
-        
-        # Get behavioral insights
-        insights.extend(self._get_behavioral_insights())
-        
-        # Generate summary
-        summary = self._generate_summary(insights)
-        
+        """Generate comprehensive AI insights for the user using the Gemini API"""
+
+        # Step 1: Gather all the financial data using your existing helper methods.
+        financial_data = self._gather_financial_data()
+
+        # Step 2: Generate a detailed prompt for the AI.
+        prompt = self._generate_ai_prompt(financial_data)
+
+        try:
+            # Step 3: Call the Gemini API.
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            response = model.generate_content(prompt)
+
+            # Clean up the response to ensure it's valid JSON
+            cleaned_response = response.text.strip().replace('`', '').replace('json', '')
+            ai_insights = json.loads(cleaned_response)
+
+            return {
+                'insights': ai_insights.get('insights', []),
+                'summary': ai_insights.get('summary', 'AI-powered summary of your finances.'),
+                'generated_at': timezone.now().isoformat(),
+                'total_insights': len(ai_insights.get('insights', []))
+            }
+
+        except Exception as e:
+            # Fallback or Error Handling
+            print(f"Error calling Gemini API: {e}")
+            # You could potentially fall back to your rule-based system here if needed
+            return {"error": "Failed to generate AI insights from Gemini."}
+
+
+    def _gather_financial_data(self):
+        """Consolidate all financial data points."""
         return {
-            'insights': insights[:8],  # Limit to top 8 insights
-            'summary': summary,
-            'generated_at': timezone.now().isoformat(),
-            'total_insights': len(insights)
+            "current_month_spending": self._get_monthly_spending(self.current_month),
+            "last_month_spending": self._get_monthly_spending(self.last_month),
+            "top_categories": self._get_top_spending_categories(),
+            "weekly_trend": self._get_weekly_spending_trend(),
+            "weekend_avg": self._get_weekend_spending_avg(),
+            "weekday_avg": self._get_weekday_spending_avg(),
         }
+
+    def _generate_ai_prompt(self, data):
+        """Creates a detailed, structured prompt for the Gemini AI."""
+        # Convert data to a JSON string for the prompt
+        data_str = json.dumps(data, indent=2, default=str)
+
+        return f"""
+        As a friendly and insightful financial analyst AI, analyze the following user expense data.
+        Provide a concise, actionable, and personalized summary and a list of 3-5 key insights.
+        Focus on identifying meaningful patterns, potential savings, and positive trends.
+        Frame your advice in an encouraging and helpful tone.
+
+        The user's financial data is:
+        {data_str}
+
+        Please return your response in a strict JSON format, like this example:
+        {{
+          "summary": "You're doing a great job managing your finances this month, but there's a growing trend in your 'Food' category worth watching. Let's look at the details.",
+          "insights": [
+            {{
+              "type": "spending",
+              "sentiment": "positive",
+              "title": "Great Control on Shopping",
+              "description": "Your spending on 'Shopping' is down 30% from last month. Keep up the mindful spending!",
+              "action": "Consider moving the $50 you saved into your savings account."
+            }},
+            {{
+              "type": "trend",
+              "sentiment": "warning",
+              "title": "Weekend Dining Increase",
+              "description": "Your spending at restaurants on weekends has doubled in the last two weeks.",
+              "action": "Explore cooking a new recipe at home this weekend as a fun alternative."
+            }}
+          ]
+        }}
+        """
     
     def _get_spending_insights(self):
         """Analyze spending patterns"""
@@ -85,19 +140,20 @@ class AIInsightsEngine:
     def _get_budget_insights(self):
         """Analyze budget performance"""
         insights = []
-        
+
         try:
+            # Corrected Query
             budget = Budget.objects.get(
                 user=self.user,
-                year=self.today.year,
-                month=self.today.month
+                start_date__year=self.today.year,
+                start_date__month=self.today.month
             )
-            
+
             current_spending = self._get_monthly_spending(self.current_month)
             if current_spending:
                 budget_used_pct = (current_spending / float(budget.amount)) * 100
                 remaining = float(budget.amount) - current_spending
-                
+
                 if budget_used_pct > 90:
                     insights.append({
                         'type': 'budget',
@@ -126,7 +182,7 @@ class AIInsightsEngine:
                             'impact': remaining,
                             'action': 'Consider allocating some remaining budget to savings or investments.'
                         })
-                        
+
         except Budget.DoesNotExist:
             current_spending = self._get_monthly_spending(self.current_month)
             if current_spending > 0:
@@ -137,7 +193,7 @@ class AIInsightsEngine:
                     'description': f'You\'ve spent ${current_spending:.0f} this month without a set budget.',
                     'action': 'Consider setting a monthly budget to better track your spending.'
                 })
-        
+
         return insights
     
     def _get_trend_insights(self):
@@ -173,23 +229,24 @@ class AIInsightsEngine:
     def _get_predictive_insights(self):
         """Generate predictive insights"""
         insights = []
-        
+
         # Predict end-of-month spending
         days_passed = self.today.day
         days_in_month = (self.current_month.replace(month=self.current_month.month+1) - timedelta(days=1)).day
         current_spending = self._get_monthly_spending(self.current_month)
-        
+
         if current_spending and days_passed > 5:
             daily_avg = current_spending / days_passed
             predicted_total = daily_avg * days_in_month
-            
+
             try:
+                # Corrected Query
                 budget = Budget.objects.get(
                     user=self.user,
-                    year=self.today.year,
-                    month=self.today.month
+                    start_date__year=self.today.year,
+                    start_date__month=self.today.month
                 )
-                
+
                 if predicted_total > float(budget.amount):
                     overage = predicted_total - float(budget.amount)
                     insights.append({
@@ -200,10 +257,10 @@ class AIInsightsEngine:
                         'impact': -overage,
                         'action': f'Reduce daily spending to ${(float(budget.amount) - current_spending) / (days_in_month - days_passed):.0f} to stay on budget.'
                     })
-                    
+
             except Budget.DoesNotExist:
                 pass
-        
+
         return insights
     
     def _get_behavioral_insights(self):
@@ -282,7 +339,7 @@ class AIInsightsEngine:
             transaction_date__gte=self.current_month
         ).values('category').annotate(
             total=Sum('amount'),
-            count=Count('id')
+            count=Count('expense_id')
         ).order_by('-total')[:5])
     
     def _get_weekly_spending_trend(self):
