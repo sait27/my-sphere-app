@@ -5,6 +5,7 @@ import apiClient from '../api/axiosConfig';
 import ExpenseFilters from '../components/expenses/ExpenseFilters';
 import ExpenseBulkActions from '../components/expenses/ExpenseBulkActions';
 import ExpenseAnalytics from '../components/expenses/ExpenseAnalytics';
+import ExpenseAIInsights from '../components/expenses/ExpenseAIInsights';
 import EditExpenseModal from '../components/modals/EditExpenseModal';
 import EmptyState from '../components/common/EmptyState';
 import ConfirmModal from '../components/modals/ConfirmModal';
@@ -530,7 +531,10 @@ const confirmDelete = async () => {
 
       {/* Conditional Content Based on View Mode */}
       {viewMode === 'analytics' ? (
-        <ExpenseAnalytics />
+        <>
+          <ExpenseAnalytics />
+          <ExpenseAIInsights />
+        </>
       ) : (
         <div>
           {/* Advanced Filters */}
