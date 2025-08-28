@@ -31,30 +31,56 @@ class BudgetView(APIView):
             serializer = BudgetSerializer(budget)
             return Response(serializer.data)
 
+class BudgetListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        budgets = Budget.objects.filter(user=request.user)
+        serializer = BudgetSerializer(budgets, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        category = request.data.get('category', 'Food & Dining')
+        amount = request.data.get('amount', 5000)
+        
+        today = date.today()
+        start_of_month = today.replace(day=1)
+        _, num_days = calendar.monthrange(today.year, today.month)
+        end_of_month = today.replace(day=num_days)
+        
+        budget = Budget.objects.create(
+            user=request.user,
+            category=category,
+            amount=amount,
+            start_date=start_of_month,
+            end_date=end_of_month,
+            is_active=True
+        )
+        
+        serializer = BudgetSerializer(budget)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
     def post(self, request):
         today = date.today()
         amount = request.data.get('amount')
+        category = request.data.get('category', 'Overall')
 
         if not amount or float(amount) <= 0:
             return Response({'error': 'A valid amount is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # CORRECTED LOGIC: Calculate the start and end of the current month
         start_of_month = today.replace(day=1)
-        # Get the number of days in the current month to find the last day
         _, num_days = calendar.monthrange(today.year, today.month)
         end_of_month = today.replace(day=num_days)
 
-        # Update if a budget for this month exists, or create a new one
         budget, created = Budget.objects.update_or_create(
             user=request.user, 
-            start_date=start_of_month, # Use the correct lookup fields
+            category=category,
+            start_date=start_of_month,
             defaults={
                 'amount': amount,
                 'end_date': end_of_month,
-                'is_active': True,
-                # Set a category if your model requires it, otherwise remove this line
-                'category': 'Overall' 
+                'is_active': True
             }
         )
         serializer = BudgetSerializer(budget)

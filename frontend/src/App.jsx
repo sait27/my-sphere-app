@@ -2,7 +2,7 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ExpensesPage from './pages/ExpensesPage';
-import ListsPageEnhanced from './pages/ListsPageEnhanced';
+import ListifyPage from './pages/ListifyPage';
 import DashboardPage from './pages/DashboardPage';
 import SettingsPage from './pages/SettingsPage';
 import AdvancedTodosPage from './pages/AdvancedTodosPage';
@@ -42,7 +42,7 @@ function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
-        <Route path="lists" element={<ListsPageEnhanced />} />
+        <Route path="lists" element={<ListifyPage />} />
         <Route path="todos" element={<AdvancedTodosPage />} />
   {/* <Route path="dashboard/todos" element={<TodosDashboard />} /> */}
         <Route path="settings" element={<SettingsPage />} />

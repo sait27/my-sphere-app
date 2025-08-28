@@ -128,6 +128,7 @@ class List(models.Model):
     ai_suggestions = models.JSONField(default=dict, blank=True)
     estimated_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     actual_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    budget = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     
     # Sharing settings
     is_shared = models.BooleanField(default=False)
@@ -153,6 +154,16 @@ class List(models.Model):
             total=models.Sum('price')
         )['total'] or 0
         return total
+    
+    @property
+    def category_name(self):
+        """Get category name as string"""
+        return self.category.name if self.category else None
+    
+    @property
+    def is_favorite(self):
+        """Check if list is marked as favorite (placeholder for future feature)"""
+        return False  # Will be implemented when favorites feature is added
 
     class Meta:
         ordering = ['-created_at']

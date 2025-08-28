@@ -57,12 +57,17 @@ class ListSerializer(serializers.ModelSerializer):
     template_details = ListTemplateSerializer(source='template', read_only=True)
     recent_activities = ListActivitySerializer(source='activities', many=True, read_only=True)
     
+    # Allow category to be sent as string and convert to foreign key
+    category = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    
     # Computed fields
     items_count = serializers.SerializerMethodField()
     completed_items_count = serializers.SerializerMethodField()
     pending_items_count = serializers.SerializerMethodField()
     total_estimated_cost = serializers.SerializerMethodField()
     total_actual_cost = serializers.SerializerMethodField()
+    category_name = serializers.SerializerMethodField()
+    is_favorite = serializers.SerializerMethodField()
     
     class Meta:
         model = List
@@ -70,16 +75,16 @@ class ListSerializer(serializers.ModelSerializer):
             'id', 'name', 'description', 'list_type', 'category', 'category_details',
             'priority', 'template', 'template_details', 'auto_sort',
             'sort_by', 'due_date', 'is_archived', 'completion_percentage',
-            'ai_suggestions', 'estimated_cost', 'actual_cost', 'created_at',
+            'ai_suggestions', 'estimated_cost', 'actual_cost', 'budget', 'created_at',
             'updated_at', 'items', 'recent_activities',
             'items_count', 'completed_items_count', 'pending_items_count',
-            'total_estimated_cost', 'total_actual_cost'
+            'total_estimated_cost', 'total_actual_cost', 'category_name', 'is_favorite'
         ]
         read_only_fields = [
             'id', 'completion_percentage', 'created_at', 'updated_at',
             'items', 'recent_activities', 'items_count',
             'completed_items_count', 'pending_items_count', 'total_estimated_cost',
-            'total_actual_cost'
+            'total_actual_cost', 'category_name', 'is_favorite'
         ]
     
     def get_items_count(self, obj):
@@ -104,6 +109,54 @@ class ListSerializer(serializers.ModelSerializer):
             total=Sum('price')
         )['total']
         return float(total) if total else 0.0
+    
+    def get_category_name(self, obj):
+        return obj.category.name if obj.category else None
+    
+    def get_is_favorite(self, obj):
+        return False  # Placeholder for future favorites feature
+    
+    def create(self, validated_data):
+        # Handle category string conversion
+        category_name = validated_data.pop('category', None)
+        category_obj = None
+        
+        if category_name:
+            # Try to get or create the category for this user
+            category_obj, created = ListCategory.objects.get_or_create(
+                user=self.context['request'].user,
+                name=category_name,
+                defaults={'color': '#3B82F6', 'icon': 'list'}
+            )
+        
+        # Create the list with the category object
+        list_obj = List.objects.create(
+            category=category_obj,
+            **validated_data
+        )
+        return list_obj
+    
+    def update(self, instance, validated_data):
+        # Handle category string conversion for updates
+        category_name = validated_data.pop('category', None)
+        
+        if category_name is not None:
+            if category_name:
+                category_obj, created = ListCategory.objects.get_or_create(
+                    user=self.context['request'].user,
+                    name=category_name,
+                    defaults={'color': '#3B82F6', 'icon': 'list'}
+                )
+                instance.category = category_obj
+            else:
+                instance.category = None
+        
+        # Update other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        return instance
 
 # Simplified serializers for list views
 class ListSummarySerializer(serializers.ModelSerializer):

@@ -10,22 +10,7 @@ from django.db.models import Q, Count, Sum, Avg, F
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.core.cache import cache
-
-# Google Generative AI is optional; provide a stub so tests can patch it
-try:
-    import google.generativeai as genai
-except Exception:
-    class _GenAIStub:
-        def configure(self, *args, **kwargs):
-            return None
-        class GenerativeModel:
-            def __init__(self, *args, **kwargs):
-                pass
-            def generate_content(self, *args, **kwargs):
-                class _Resp:
-                    text = '{"items": []}'
-                return _Resp()
-    genai = _GenAIStub()
+import google.generativeai as genai
 
 from .models import (
     List, ListItem, ListTemplate, ListCategory, 
@@ -34,44 +19,269 @@ from .models import (
 
 logger = logging.getLogger(__name__)
 
+class GeminiAI:
+    """Enhanced Gemini AI service for natural language processing"""
+    
+    def __init__(self):
+        try:
+            api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+            if not api_key or api_key == 'your-gemini-api-key-here':
+                logger.warning("No valid Gemini API key found")
+                self.ai_available = False
+                self.model = None
+                return
+            
+            genai.configure(api_key=api_key)
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            self.ai_available = True
+        except Exception as e:
+            logger.error(f"Gemini AI initialization failed: {e}")
+            self.ai_available = False
+            self.model = None
+
+    def get_productivity_insights(self, user_data):
+        """Generate AI insights using Gemini"""
+        if not self.ai_available:
+            return [{
+                "type": "info",
+                "title": "Keep Building Momentum",
+                "description": "Consistency is key to productivity success. Small daily progress adds up!",
+                "priority": "medium"
+            }]
+        
+        try:
+            prompt = f"""
+            Analyze this user's productivity data and provide 3-4 actionable insights:
+            
+            User Data:
+            - Total Lists: {user_data.get('total_lists', 0)}
+            - Completed Lists: {user_data.get('completed_lists', 0)}
+            - Average Completion Rate: {user_data.get('avg_completion', 0)}%
+            - Total Items: {user_data.get('total_items', 0)}
+            - Completed Items: {user_data.get('completed_items', 0)}
+            
+            Provide insights in this JSON format:
+            {{
+                "insights": [
+                    {{
+                        "type": "success|warning|info|tip",
+                        "title": "Short title",
+                        "description": "Actionable insight description",
+                        "priority": "high|medium|low"
+                    }}
+                ]
+            }}
+            
+            Focus on:
+            1. Completion patterns and improvement suggestions
+            2. Productivity optimization tips
+            3. Motivational feedback
+            4. Specific actionable advice
+            
+            Keep descriptions under 100 characters and make them encouraging.
+            """
+            
+            response = self.model.generate_content(prompt)
+            result = json.loads(response.text)
+            return result.get('insights', [])
+            
+        except Exception as e:
+            logger.error(f"Gemini insights failed: {e}")
+            return [{
+                "type": "info",
+                "title": "Keep Building Momentum",
+                "description": "Consistency is key to productivity success. Small daily progress adds up!",
+                "priority": "medium"
+            }]
+
+    def suggest_list_items(self, list_name, list_type, context=""):
+        """Generate smart item suggestions using Gemini"""
+        if not self.ai_available:
+            return [
+                {"name": "Add your first item", "priority": "medium", "estimated_minutes": 10},
+                {"name": "Break down large tasks", "priority": "high", "estimated_minutes": 5},
+                {"name": "Set realistic goals", "priority": "medium", "estimated_minutes": 15}
+            ]
+        
+        try:
+            prompt = f"""
+            Generate 5-8 relevant items for a {list_type} list named "{list_name}".
+            
+            Context: {context}
+            
+            Provide suggestions in this JSON format:
+            {{
+                "items": [
+                    {{
+                        "name": "Item name",
+                        "priority": "high|medium|low",
+                        "estimated_minutes": 15
+                    }}
+                ]
+            }}
+            
+            Guidelines:
+            - Make items specific and actionable
+            - Vary priorities based on importance
+            - Estimate realistic completion times
+            - Consider the list type and name context
+            - Keep item names concise (under 50 characters)
+            """
+            
+            response = self.model.generate_content(prompt)
+            result = json.loads(response.text)
+            return result.get('items', [])
+            
+        except Exception as e:
+            logger.error(f"Gemini suggestions failed: {e}")
+            return [
+                {"name": "Add your first item", "priority": "medium", "estimated_minutes": 10},
+                {"name": "Break down large tasks", "priority": "high", "estimated_minutes": 5}
+            ]
+    
+    def parse_natural_language(self, text):
+        """Parse natural language into structured list items"""
+        if not self.ai_available:
+            items = []
+            for item in text.split(','):
+                cleaned = item.strip()
+                if cleaned:
+                    items.append({
+                        "name": cleaned.capitalize(),
+                        "priority": "medium",
+                        "estimated_minutes": 15
+                    })
+            return items
+        
+        try:
+            prompt = f"""
+            Parse this natural language text into structured list items:
+            
+            Text: "{text}"
+            
+            Extract individual tasks/items and format as JSON:
+            {{
+                "items": [
+                    {{
+                        "name": "Clean, actionable item name",
+                        "priority": "high|medium|low",
+                        "estimated_minutes": 15
+                    }}
+                ]
+            }}
+            
+            Guidelines:
+            - Extract distinct, actionable items
+            - Remove filler words and clean up grammar
+            - Assign appropriate priorities
+            - Estimate realistic completion times
+            - If text is unclear, create 1-2 general items
+            """
+            
+            response = self.model.generate_content(prompt)
+            result = json.loads(response.text)
+            return result.get('items', [])
+            
+        except Exception as e:
+            logger.error(f"Gemini parsing failed: {e}")
+            items = []
+            for item in text.split(','):
+                cleaned = item.strip()
+                if cleaned:
+                    items.append({
+                        "name": cleaned.capitalize(),
+                        "priority": "medium",
+                        "estimated_minutes": 15
+                    })
+            return items
+    
+    def generate_motivational_message(self, completion_rate, recent_activity):
+        """Generate personalized motivational messages"""
+        if not self.ai_available:
+            if completion_rate >= 80:
+                return "🎉 Amazing progress! You're crushing your goals!"
+            elif completion_rate >= 60:
+                return "💪 Great work! Keep the momentum going!"
+            else:
+                return "🌟 Every step forward counts! You've got this!"
+        
+        try:
+            prompt = f"""
+            Generate a short, encouraging message for a user with:
+            - Completion Rate: {completion_rate}%
+            - Recent Activity: {recent_activity}
+            
+            Return just the message text (no JSON), keep it under 80 characters.
+            Make it personal, positive, and motivating. Use emojis appropriately.
+            """
+            
+            response = self.model.generate_content(prompt)
+            return response.text.strip()
+            
+        except Exception as e:
+            logger.error(f"Gemini motivation failed: {e}")
+            if completion_rate >= 80:
+                return "🎉 Amazing progress! You're crushing your goals!"
+            elif completion_rate >= 60:
+                return "💪 Great work! Keep the momentum going!"
+            else:
+                return "🌟 Every step forward counts! You've got this!"
+    
+    def get_productivity_predictions(self, user_data):
+        """Generate AI predictions for productivity trends"""
+        if not self.ai_available:
+            return {
+                "next_week_completion": "75%",
+                "optimal_task_time": "Morning hours work best",
+                "productivity_boost": "+10%",
+                "recommendation": "Stay consistent with your routine"
+            }
+        
+        try:
+            prompt = f"""
+            Based on this productivity data, predict next week's performance:
+            
+            Current Data:
+            - Completion Rate: {user_data.get('completion_rate', 0)}%
+            - Recent Trend: {user_data.get('trend', 'stable')}
+            - Activity Level: {user_data.get('activity', 'medium')}
+            
+            Provide predictions in JSON format:
+            {{
+                "next_week_completion": "85%",
+                "optimal_task_time": "Morning hours (9-11 AM)",
+                "productivity_boost": "+12%",
+                "recommendation": "Focus on morning productivity"
+            }}
+            """
+            
+            response = self.model.generate_content(prompt)
+            result = json.loads(response.text)
+            return result
+            
+        except Exception as e:
+            logger.error(f"Gemini predictions failed: {e}")
+            return {
+                "next_week_completion": "75%",
+                "optimal_task_time": "Morning hours work best",
+                "productivity_boost": "+10%",
+                "recommendation": "Stay consistent with your routine"
+            }
+
+
 class ListAIService:
     """Service for AI-powered list operations"""
     
     def __init__(self):
-        self.model = None  # lazy init so tests can patch GenerativeModel before use
-        try:
-            # genai is either the real module or our stub
-            genai.configure(api_key=os.environ.get("GOOGLE_API_KEY"))
-            self.ai_available = True
-        except Exception as e:
-            logger.error(f"AI service initialization failed: {e}")
-            self.ai_available = False
-
-    def _ensure_model(self):
-        """Create model lazily to honor runtime patches in tests."""
-        if not self.ai_available:
-            return False
-        if self.model is None:
-            try:
-                self.model = genai.GenerativeModel('gemini-1.5-flash')
-            except (ValueError, TypeError) as e:
-                logger.error(f"AI model creation failed due to invalid parameters: {e}")
-                self.ai_available = False
-                return False
-            except ImportError as e:
-                logger.error(f"AI model creation failed due to missing dependencies: {e}")
-                self.ai_available = False
-                return False
-            except Exception as e:
-                logger.error(f"AI model creation failed with unexpected error: {e}")
-                self.ai_available = False
-                return False
-        return True
-
+        self.gemini = GeminiAI()
+    
     def parse_list_items(self, text, list_type='checklist', context=None):
         """Parse natural language text into structured list items with context awareness"""
-        if not self._ensure_model():
-            return {'items': [{'name': text, 'quantity': None}]}
+        return {'items': self.gemini.parse_natural_language(text)}
+    
+    def _ensure_model(self):
+        """Ensure the AI model is available"""
+        return self.gemini.ai_available and self.gemini.model is not None
         
         try:
             prompt = self._build_enhanced_parsing_prompt(text, list_type, context)
@@ -640,12 +850,13 @@ class ListService:
             raise
 
     @transaction.atomic
-    def duplicate_list(self, original_list, new_name=None):
+    def duplicate_list(self, original_list, new_name=None, user=None):
         """
         Duplicates a list and all its items.
         Resets completion status for the new list and its items.
         """
-        user = original_list.user
+        if not user:
+            user = original_list.user
 
         if not new_name:
             new_name = f"{original_list.name} (Copy)"
@@ -658,10 +869,10 @@ class ListService:
             list_type=original_list.list_type,
             category=original_list.category,
             priority=original_list.priority,
-            is_public=original_list.is_public,
             completion_percentage=0,
             is_archived=False,
-            ai_suggestions_enabled=original_list.ai_suggestions_enabled,
+            auto_sort=original_list.auto_sort,
+            sort_by=original_list.sort_by,
         )
 
         # Duplicate items, ensuring they are not marked as completed
@@ -1064,3 +1275,283 @@ class ListTemplateService:
         except Exception as e:
             logger.error(f"List creation from template failed: {e}")
             raise
+
+
+class ListItemService:
+    """Service for list item operations"""
+    
+    def __init__(self):
+        self.ai_service = ListAIService()
+    
+    def add_items_with_ai(self, list_obj, text):
+        """Add items to list using AI parsing"""
+        try:
+            # Build context for better parsing
+            context = {
+                'existing_items': [item.name for item in list_obj.items.all()[:10]],
+                'list_type': list_obj.list_type,
+                'list_name': list_obj.name
+            }
+            
+            # Parse items using AI
+            parsed_data = self.ai_service.parse_list_items(text, list_obj.list_type, context)
+            items_created = []
+            
+            for item_data in parsed_data.get('items', []):
+                if not item_data.get('name'):
+                    continue
+                    
+                item = ListItem.objects.create(
+                    list=list_obj,
+                    name=item_data['name'],
+                    quantity=item_data.get('quantity'),
+                    category=item_data.get('category'),
+                    priority=item_data.get('priority', 'medium'),
+                    estimated_price=item_data.get('estimated_price'),
+                    notes=item_data.get('notes')
+                )
+                items_created.append(item)
+            
+            # Update list completion percentage
+            list_obj.update_completion_percentage()
+            
+            return items_created
+            
+        except Exception as e:
+            logger.error(f"AI item addition failed: {e}")
+            raise
+    
+    def bulk_update_items(self, user, operation_data):
+        """Handle bulk operations on items"""
+        try:
+            operation = operation_data['operation']
+            item_ids = operation_data.get('item_ids', [])
+            
+            items = ListItem.objects.filter(
+                id__in=item_ids,
+                list__user=user
+            )
+            
+            if operation == 'bulk_complete':
+                items.update(
+                    is_completed=True,
+                    completed_at=timezone.now()
+                )
+            elif operation == 'bulk_incomplete':
+                items.update(
+                    is_completed=False,
+                    completed_at=None
+                )
+            elif operation == 'bulk_delete_items':
+                count = items.count()
+                items.delete()
+                return {'deleted_count': count}
+            
+            # Update completion percentages for affected lists
+            affected_lists = set(item.list for item in items)
+            for list_obj in affected_lists:
+                list_obj.update_completion_percentage()
+            
+            return {'updated_count': items.count()}
+            
+        except Exception as e:
+            logger.error(f"Bulk item operations failed: {e}")
+            raise
+    
+    def get_smart_suggestions(self, list_obj):
+        """Get AI-powered suggestions for list items"""
+        try:
+            suggestions = []
+            
+            if list_obj.list_type == 'shopping':
+                common_items = ['milk', 'bread', 'eggs', 'butter', 'rice', 'pasta', 'chicken']
+                existing_items = set(item.name.lower() for item in list_obj.items.all())
+                
+                for item in common_items:
+                    if item not in existing_items:
+                        suggestions.append({
+                            'type': 'add_item',
+                            'suggestion': f"Consider adding '{item}' to your shopping list",
+                            'item_name': item,
+                            'category': self._get_item_category(item)
+                        })
+            
+            elif list_obj.list_type == 'todo':
+                if list_obj.items.filter(priority='high').count() == 0:
+                    suggestions.append({
+                        'type': 'prioritize',
+                        'suggestion': 'Consider setting priority levels for better task management'
+                    })
+            
+            # Check for uncategorized items
+            uncategorized_count = list_obj.items.filter(category__isnull=True).count()
+            if uncategorized_count > 3:
+                suggestions.append({
+                    'type': 'organize',
+                    'suggestion': f'You have {uncategorized_count} uncategorized items. Consider organizing them for better management.'
+                })
+            
+            return suggestions[:5]  # Limit to 5 suggestions
+            
+        except Exception as e:
+            logger.error(f"Smart suggestions failed: {e}")
+            return []
+    
+    def _get_item_category(self, item_name):
+        """Get category for an item"""
+        category_map = {
+            'milk': 'dairy', 'bread': 'bakery', 'eggs': 'dairy',
+            'butter': 'dairy', 'rice': 'grains', 'pasta': 'grains',
+            'chicken': 'meat'
+        }
+        return category_map.get(item_name.lower(), 'other')
+
+
+class ExportService:
+    """Service for exporting lists in various formats"""
+    
+    def export_lists_csv(self, lists):
+        """Export lists as CSV format"""
+        import csv
+        import io
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['List Name', 'Item Name', 'Quantity', 'Category', 'Priority', 'Completed', 'Created Date'])
+        
+        for list_obj in lists:
+            for item in list_obj.items.all():
+                writer.writerow([
+                    list_obj.name,
+                    item.name,
+                    item.quantity or '',
+                    item.category or '',
+                    item.priority or '',
+                    'Yes' if item.is_completed else 'No',
+                    item.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                ])
+        
+        return output.getvalue()
+    
+    def export_lists_json(self, lists):
+        """Export lists as JSON format"""
+        data = []
+        for list_obj in lists:
+            list_data = {
+                'id': list_obj.id,
+                'name': list_obj.name,
+                'description': list_obj.description,
+                'list_type': list_obj.list_type,
+                'priority': list_obj.priority,
+                'completion_percentage': list_obj.completion_percentage,
+                'created_at': list_obj.created_at.isoformat(),
+                'items': []
+            }
+            
+            for item in list_obj.items.all():
+                list_data['items'].append({
+                    'id': item.id,
+                    'name': item.name,
+                    'description': item.description,
+                    'quantity': item.quantity,
+                    'category': item.category,
+                    'priority': item.priority,
+                    'is_completed': item.is_completed,
+                    'estimated_price': float(item.estimated_price) if item.estimated_price else None,
+                    'created_at': item.created_at.isoformat()
+                })
+            
+            data.append(list_data)
+        
+        return json.dumps(data, indent=2)
+
+
+class AgendaService:
+    """Service for agenda and daily planning"""
+    
+    def get_daily_agenda(self, user, date=None):
+        """Get daily agenda for user"""
+        try:
+            if not date:
+                date = timezone.now().date()
+            
+            # Get recent lists
+            recent_lists = List.objects.filter(
+                user=user,
+                created_at__date=date,
+                is_archived=False
+            ).order_by('-created_at')[:5]
+            
+            # Get pending high-priority items
+            pending_items = ListItem.objects.filter(
+                list__user=user,
+                is_completed=False,
+                priority__in=['high', 'urgent']
+            ).select_related('list').order_by('created_at')[:10]
+            
+            # Get overdue items
+            overdue_items = ListItem.objects.filter(
+                list__user=user,
+                is_completed=False,
+                due_date__lt=date
+            ).select_related('list').order_by('due_date')[:5]
+            
+            return {
+                'date': date.isoformat(),
+                'recent_lists': recent_lists,
+                'pending_items': pending_items,
+                'overdue_items': overdue_items,
+                'summary': {
+                    'total_pending': pending_items.count(),
+                    'total_overdue': overdue_items.count(),
+                    'lists_created_today': recent_lists.count()
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Daily agenda generation failed: {e}")
+            return {}
+    
+    def get_weekly_summary(self, user):
+        """Get weekly productivity summary"""
+        try:
+            end_date = timezone.now()
+            start_date = end_date - timedelta(days=7)
+            
+            # Lists created this week
+            lists_created = List.objects.filter(
+                user=user,
+                created_at__gte=start_date
+            ).count()
+            
+            # Items completed this week
+            items_completed = ListItem.objects.filter(
+                list__user=user,
+                is_completed=True,
+                completed_at__gte=start_date
+            ).count()
+            
+            # Most productive day
+            daily_completions = {}
+            for i in range(7):
+                day = (start_date + timedelta(days=i)).date()
+                count = ListItem.objects.filter(
+                    list__user=user,
+                    is_completed=True,
+                    completed_at__date=day
+                ).count()
+                daily_completions[day.strftime('%A')] = count
+            
+            most_productive_day = max(daily_completions, key=daily_completions.get)
+            
+            return {
+                'period': 'week',
+                'lists_created': lists_created,
+                'items_completed': items_completed,
+                'most_productive_day': most_productive_day,
+                'daily_breakdown': daily_completions
+            }
+            
+        except Exception as e:
+            logger.error(f"Weekly summary generation failed: {e}")
+            return {}

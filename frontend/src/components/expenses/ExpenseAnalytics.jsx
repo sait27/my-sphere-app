@@ -21,43 +21,46 @@ const ExpenseAnalytics = () => {
   const [period, setPeriod] = useState('month');
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchAnalytics = async () => {
+      if (!isMounted) return;
+      
       try {
         setLoading(true);
         const [analyticsRes, trendsRes, budgetRes] = await Promise.allSettled([
           apiClient.get(`/expenses/advanced/analytics/?period=${period}`),
           apiClient.get('/expenses/advanced/trends/?months=6'),
-          apiClient.get('/expenses/advanced/budget_analysis/'),
+          apiClient.get('/expenses/advanced/budget-analysis/'),
         ]);
+
+        if (!isMounted) return;
 
         if (analyticsRes.status === 'fulfilled') {
           setAnalytics(analyticsRes.value.data);
-        } else {
-          console.error('Failed to fetch analytics:', analyticsRes.reason);
         }
 
         if (trendsRes.status === 'fulfilled') {
           setTrends(trendsRes.value.data);
-        } else {
-          console.error('Failed to fetch trends:', trendsRes.reason);
         }
 
         if (budgetRes.status === 'fulfilled') {
           setBudgetAnalysis(budgetRes.value.data.budget_analysis);
-        } else {
-          console.error('Failed to fetch budget analysis:', budgetRes.reason);
         }
       } catch (error) {
         console.error('Failed to fetch analytics data', error);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchAnalytics();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [period]);
 
-  // --- NEW LOGIC TO CALCULATE AVERAGES ON THE FRONTEND ---
   const getSpendingPatternAverages = (patterns) => {
     if (!patterns || !patterns.by_day_of_week || !patterns.weekend_vs_weekday) {
       return null;
@@ -202,7 +205,7 @@ const ExpenseAnalytics = () => {
                 </h3>
                 <div className="space-y-4">
                     {categoryBreakdown.slice(0, 6).map((category, index) => {
-                        const percentage = category.percentage_of_total || 0;
+                        const percentage = summary ? (category.total / summary.total_amount) * 100 : 0;
                         return (
                             <div key={category.category} className="group hover:bg-slate-700/30 p-3 rounded-lg transition-all duration-200">
                                 <div className="flex items-center justify-between mb-2">
@@ -215,10 +218,10 @@ const ExpenseAnalytics = () => {
                                     </div>
                                     <div className="text-right">
                                         <p className="text-white font-bold">
-                                            ₹{(category.total_spent || 0).toLocaleString('en-IN')}
+                                            ₹{(category.total || 0).toLocaleString('en-IN')}
                                         </p>
                                         <p className="text-slate-400 text-xs">
-                                            {category.transaction_count || 0} transactions
+                                            {category.count || 0} transactions
                                         </p>
                                     </div>
                                 </div>
@@ -246,7 +249,7 @@ const ExpenseAnalytics = () => {
                 <div className="space-y-4">
                     {categoryBreakdown.slice(0, 3).map((category, index) => {
                         const isHighest = index === 0;
-                        const percentage = category.percentage_of_total || 0;
+                        const percentage = summary ? (category.total / summary.total_amount) * 100 : 0;
                         return (
                             <div
                                 key={category.category}
@@ -264,14 +267,17 @@ const ExpenseAnalytics = () => {
                                 <div className="flex items-center justify-between">
                                     <span className="text-white font-bold text-lg">{category.category}</span>
                                     <p className="text-white font-bold">
-                                        ₹{(category.total_spent || 0).toLocaleString('en-IN')}
+                                        ₹{(category.total || 0).toLocaleString('en-IN')}
                                     </p>
                                 </div>
-                                <p className="text-xs text-slate-400 mt-1">{category.transaction_count || 0} transactions</p>
+                                <p className="text-xs text-slate-400 mt-1">{category.count || 0} transactions</p>
                             </div>
                         );
                     })}
-                    <div className="grid grid-cols-2 gap-4 mt-6">
+                    
+                    {/* --- FIX IS HERE --- */}
+                    {/* This grid was misplaced inside the map function. It's now a sibling to the map. */}
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 p-4 rounded-lg border border-blue-500/20">
                             <div className="flex items-center gap-2 mb-2">
                                 <BarChart3 className="text-blue-400" size={16} />
@@ -369,25 +375,46 @@ const ExpenseAnalytics = () => {
               ))}
             </div>
           ) : (
-            <p className="text-slate-400 text-center py-4">No budget data for this period.</p>
+            <div className="text-center py-8">
+              <p className="text-slate-400 mb-4">No budget data for this period.</p>
+              <p className="text-slate-500 text-sm mb-4">
+                Create budgets to track your spending against your financial goals.
+              </p>
+              <button 
+                onClick={async () => {
+                  try {
+                    await apiClient.post('/budgets/current/', {
+                      category: 'Food & Dining',
+                      amount: 5000
+                    });
+                    window.location.reload();
+                  } catch (error) {
+                    console.error('Failed to create budget:', error);
+                  }
+                }}
+                className="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors"
+              >
+                Create Sample Budget
+              </button>
+            </div>
           )}
         </div>
       )}
 
       {/* Spending Trends */}
-      {trends?.monthly_data && Object.keys(trends.monthly_data).length > 0 && (
+      {trends?.monthly_trends && trends.monthly_trends.length > 0 && (
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-xl border border-slate-700">
           <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
             <BarChart3 className="mr-2" size={20} />
             Spending Trends
           </h3>
           <div className="space-y-3">
-            {Object.entries(trends.monthly_data).map(([month, data]) => (
-              <div key={month} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
-                <span className="text-slate-300">{month}</span>
+            {trends.monthly_trends.map((trend) => (
+              <div key={trend.month} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
+                <span className="text-slate-300">{trend.month}</span>
                 <div className="flex items-center space-x-4">
-                  <span className="text-slate-400 text-sm">{data.expense_count || 0} expenses</span>
-                  <span className="text-white font-semibold">₹{(data.total_spent || 0).toFixed(2)}</span>
+                  <span className="text-slate-400 text-sm">{trend.count || 0} expenses</span>
+                  <span className="text-white font-semibold">₹{(trend.total || 0).toFixed(2)}</span>
                 </div>
               </div>
             ))}
@@ -395,7 +422,7 @@ const ExpenseAnalytics = () => {
         </div>
       )}
 
-      {/* NEW SECTION: Financial Habits */}
+      {/* Financial Habits */}
       {(spendingPatterns || (highValueTransactions && highValueTransactions.length > 0)) && (
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-xl border border-slate-700">
           <h3 className="text-xl font-semibold text-white mb-6 flex items-center">

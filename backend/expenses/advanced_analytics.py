@@ -370,44 +370,33 @@ class AdvancedExpenseAnalytics:
     def get_budget_analysis(self):
         """Get detailed budget analysis"""
         try:
-            budget_analysis_data = [] # We'll build a list directly
+            budget_analysis_data = []
             active_budgets = self.budgets.filter(is_active=True)
             
-            # Determine the current month's date range to filter expenses
             now = timezone.now()
             start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             
-            # Pre-calculate total spending for this month for efficiency
-            total_spent_this_month = self.expenses.filter(
-                transaction_date__gte=start_of_month.date()
-            ).aggregate(total=Sum('amount'))['total'] or 0
+            # Get all expenses for current month
+            month_expenses = self.expenses.filter(transaction_date__gte=start_of_month.date())
+            total_spent_this_month = float(month_expenses.aggregate(total=Sum('amount'))['total'] or 0)
 
             for budget in active_budgets:
                 budget_amount = float(budget.amount)
-                total_spent_for_budget = 0
-                expense_count = 0
                 
-                # --- THIS IS THE CRITICAL FIX ---
-                # Check if the budget is a general, 'Overall' budget
-                if budget.category and budget.category.lower() == 'overall':
-                    # If it is, use the total spending for the entire month
-                    total_spent_for_budget = float(total_spent_this_month)
-                    # And count all expenses in the month
-                    expense_count = self.expenses.filter(transaction_date__gte=start_of_month.date()).count()
+                # For 'Overall' or 'Food & Dining' budgets, use total spending
+                if not budget.category or budget.category.lower() in ['overall', 'food & dining']:
+                    total_spent_for_budget = total_spent_this_month
+                    expense_count = month_expenses.count()
                 else:
-                    # Otherwise, use the existing logic for specific category budgets
-                    category_expenses = self.expenses.filter(
-                        category=budget.category, 
-                        transaction_date__gte=start_of_month.date()
-                    )
+                    # Match expenses by category (case insensitive)
+                    category_expenses = month_expenses.filter(category__iexact=budget.category)
                     total_spent_for_budget = float(category_expenses.aggregate(Sum('amount'))['amount__sum'] or 0)
                     expense_count = category_expenses.count()
-                # --- END OF FIX ---
                 
                 percentage_used = round((total_spent_for_budget / budget_amount) * 100, 1) if budget_amount > 0 else 0
                 
                 budget_analysis_data.append({
-                    'category': budget.category,
+                    'category': budget.category or 'Overall',
                     'budget_amount': budget_amount,
                     'spent_amount': total_spent_for_budget,
                     'remaining_amount': budget_amount - total_spent_for_budget,
@@ -416,15 +405,14 @@ class AdvancedExpenseAnalytics:
                     'expense_count': expense_count
                 })
             
-            # Build the final response structure
             return {
                 'budget_analysis': budget_analysis_data,
-                'overall_summary': {}, # Can be enhanced later if needed
-                'recommendations': [] # Can be enhanced later if needed
+                'overall_summary': {},
+                'recommendations': []
             }
         except Exception as e:
             print(f"🔴 ERROR IN get_budget_analysis: {str(e)}")
-            return { 'budget_analysis': [], 'overall_summary': {}, 'recommendations': [] }
+            return {'budget_analysis': [], 'overall_summary': {}, 'recommendations': []}
 
     def get_trends_analysis(self, months=6):
         """Get spending trends analysis for the specified number of months"""

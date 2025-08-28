@@ -1,484 +1,541 @@
-// components/ListItemsModal.jsx
-
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  X, Plus, ShoppingCart, CheckCircle, Circle, Edit3, 
-  Trash2, DollarSign, Package, Zap, Loader2, Edit2, Check
-} from 'lucide-react';
-import { useLists } from '../../hooks/useLists';
-import toast from 'react-hot-toast';
-import ConfirmModal from '../modals/ConfirmModal';
-import apiClient from "../../api/axiosConfig";
-
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Plus, Check, Edit2, Trash2, Search, Filter, DollarSign, ShoppingCart } from 'lucide-react';
+import {useShoppingMode} from '../../hooks/useShoppingMode';
+import apiClient from '../../api/axiosConfig';
 const ListItemsModal = ({ 
-  selectedList, 
+  list, 
   isOpen, 
   onClose,
-  onListUpdated,
-  updateItem,
-  deleteItem,
-  addItemsWithAI 
+  onAddItems,
+  onUpdateItem,
+  onDeleteItem
 }) => {
-  const { fetchListDetails } = useLists();
-  
+  const { createExpenseFromList, updateItemPrice, loading: shoppingLoading } = useShoppingMode();
   const [newItemText, setNewItemText] = useState('');
-  const [isAddingItem, setIsAddingItem] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [editText, setEditText] = useState('');
-  const [shoppingMode, setShoppingMode] = useState(false);
-  const [itemPrices, setItemPrices] = useState({});
-  const [loadingItems, setLoadingItems] = useState(new Set());
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false });
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [editingPrice, setEditingPrice] = useState(null);
+  const [priceText, setPriceText] = useState('');
 
-  // Add null safety check
-  if (!selectedList && isOpen) {
-    console.warn('ListItemsModal: No selectedList provided but modal is open');
-  }
-  
-  // Always call hooks before any early returns
   useEffect(() => {
-    if (selectedList?.id) {
-      // Reset local state when list changes
-      setLoadingItems(new Set());
-      setItemPrices({});
+    if (!isOpen) {
+      setNewItemText('');
       setEditingItem(null);
       setEditText('');
+      setSearchQuery('');
+      setFilterStatus('all');
     }
-  }, [selectedList?.id]);
+  }, [isOpen]);
 
-  // ALL CALLBACKS MUST BE DEFINED BEFORE EARLY RETURNS
-  const handleAddItems = useCallback(async (e) => {
+  if (!isOpen || !list) return null;
+
+  const handleAddItems = async (e) => {
     e.preventDefault();
-    if (!newItemText.trim() || !selectedList?.id) return;
+    if (!newItemText.trim()) return;
 
-    const inputText = newItemText;
-    setNewItemText('');
     setIsAddingItem(true);
-
     try {
-      await addItemsWithAI(selectedList.id, inputText);
-      // Refresh the list details to get updated state with new items
-      if (selectedList?.id && onListUpdated) {
-        const updatedList = await fetchListDetails(selectedList.id);
-        if (updatedList) {
-          onListUpdated(updatedList);
-        }
-      }
+      await onAddItems(list.id, newItemText);
+      setNewItemText('');
     } catch (error) {
-      // If the hook fails, restore the input text.
-      setNewItemText(inputText);
-      // The hook now displays its own error toasts.
+      console.error('Error adding items:', error);
     } finally {
       setIsAddingItem(false);
     }
-  }, [newItemText, selectedList?.id, addItemsWithAI, onListUpdated, fetchListDetails]);
+  };
 
-  const handleToggleComplete = useCallback(async (item) => {
-    if (item.isOptimistic) return; // Don't allow toggle on optimistic items
-    
-    const itemId = item.id;
-    const newCompletedState = !item.is_completed;
-    
-    // Add to loading set
-    setLoadingItems(prev => new Set([...prev, itemId]));
-    
+  const handleToggleComplete = async (item) => {
     try {
-      await updateItem(itemId, { is_completed: newCompletedState });
-      // Refresh the list details to get updated state
-      if (selectedList?.id && onListUpdated) {
-        const updatedList = await fetchListDetails(selectedList.id);
-        if (updatedList) {
-          onListUpdated(updatedList);
-        }
+      console.log('=== ITEM UPDATE DEBUG ===');
+      console.log('Item:', item);
+      console.log('Current completed status:', item.is_completed);
+      console.log('New completed status:', !item.is_completed);
+      console.log('List ID:', list.id);
+      
+      const updatedData = { is_completed: !item.is_completed };
+      console.log('Update data:', updatedData);
+      
+      // Test direct API call first
+      try {
+        console.log('Testing direct API call...');
+        const directResponse = await apiClient.patch(`/lists/items/${item.id}/`, updatedData);
+        console.log('Direct API call successful:', directResponse.data);
+      } catch (directError) {
+        console.error('Direct API call failed:', directError);
+        console.error('Direct API error response:', directError.response?.data);
+        console.error('Direct API error status:', directError.response?.status);
       }
+      
+      // Now try through the hook
+      await onUpdateItem(item.id, updatedData);
+      console.log('Item updated successfully through hook');
     } catch (error) {
-      console.error('Error updating item:', error);
-    } finally {
-      // Remove from loading set
-      setLoadingItems(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(itemId);
-        return newSet;
+      console.error('=== ERROR UPDATING ITEM ===');
+      console.error('Error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.response?.status);
+      console.error('Error data:', error.response?.data);
+      console.error('Error config:', error.config);
+      
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.detail || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Unknown error occurred';
+      
+      alert(`Failed to update item: ${errorMessage}`);
+    }
+  };
+
+  const handleUpdatePrice = async (itemId, price) => {
+    try {
+      console.log('=== PRICE UPDATE DEBUG ===');
+      console.log('Item ID:', itemId);
+      console.log('Price input:', price);
+      
+      const priceValue = price && !isNaN(parseFloat(price)) ? parseFloat(price) : null;
+      console.log('Processed price value:', priceValue);
+      
+      const updateData = { price: priceValue };
+      console.log('Update data:', updateData);
+      
+      await onUpdateItem(itemId, updateData);
+      setEditingPrice(null);
+      setPriceText('');
+      console.log('Price updated successfully');
+    } catch (error) {
+      console.error('=== ERROR UPDATING PRICE ===');
+      console.error('Error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.response?.status);
+      console.error('Error data:', error.response?.data);
+      
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.detail || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Unknown error occurred';
+      
+      alert(`Failed to update price: ${errorMessage}`);
+    }
+  };
+
+  const handleShoppingMode = async () => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/v1/lists/${list.id}/shopping-mode/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        }
       });
-    }
-  }, [updateItem, selectedList, onListUpdated, fetchListDetails]);
-
-  const handleDeleteItem = useCallback(async (itemId) => {
-    try {
-      await deleteItem(itemId);
-      // Don't show success toast here - the hook handles it
-      // Refresh the list details to get updated state
-      if (selectedList?.id && onListUpdated) {
-        const updatedList = await fetchListDetails(selectedList.id);
-        if (updatedList) {
-          onListUpdated(updatedList);
-        }
+      
+      if (response.ok) {
+        window.location.reload();
       }
     } catch (error) {
-      // Don't show error toast here either - the hook handles it
+      console.error('Error activating shopping mode:', error);
     }
-  }, [deleteItem, selectedList, onListUpdated, fetchListDetails]);
+  };
 
-  const handleEditItem = useCallback((item) => {
-    setEditingItem(item.id);
-    setEditText(item.name);
-  }, []);
+  const handleAddToExpenses = async () => {
+    const completedWithPrices = list.items?.filter(item => item.is_completed && item.price) || [];
+    const total = completedWithPrices.reduce((sum, item) => sum + parseFloat(item.price), 0);
+    
+    if (window.confirm(`Add shopping items to expenses (₹${total.toFixed(2)})?`)) {
+      try {
+        const response = await fetch(`http://localhost:8000/api/v1/lists/${list.id}/convert-to-expense/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          alert(result.message || 'Successfully added to expenses!');
+          onClose();
+        } else {
+          const error = await response.json();
+          alert(error.error || 'Failed to add to expenses');
+        }
+      } catch (error) {
+        console.error('Error adding to expenses:', error);
+        alert('Failed to add to expenses');
+      }
+    }
+  };
 
-  const handleSaveEdit = useCallback(async (itemId) => {
+  const handleSaveEdit = async () => {
     if (!editText.trim()) return;
     
     try {
-      await updateItem(itemId, { name: editText.trim() });
+      console.log('=== NAME UPDATE DEBUG ===');
+      console.log('Item ID:', editingItem);
+      console.log('New name:', editText.trim());
+      
+      const updateData = { name: editText.trim() };
+      await onUpdateItem(editingItem, updateData);
       setEditingItem(null);
       setEditText('');
-      // Don't show toast here - the hook handles it
-      // Refresh the list details to get updated state
-      if (selectedList?.id && onListUpdated) {
-        const updatedList = await fetchListDetails(selectedList.id);
-        if (updatedList) {
-          onListUpdated(updatedList);
-        }
-      }
+      console.log('Name updated successfully');
     } catch (error) {
-      // Don't show error toast here either - the hook handles it
+      console.error('=== ERROR UPDATING NAME ===');
+      console.error('Error:', error);
+      console.error('Error response:', error.response);
+      
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.detail || 
+                          error.message || 
+                          'Unknown error occurred';
+      
+      alert(`Failed to update item name: ${errorMessage}`);
     }
-  }, [editText, updateItem, selectedList, onListUpdated, fetchListDetails]);
+  };
 
-  const calculateShoppingTotal = useCallback(() => {
-    return Object.values(itemPrices).reduce((total, price) => 
-      total + parseFloat(price || 0), 0
-    );
-  }, [itemPrices]);
-
-  const handleFinishShopping = useCallback(async () => {
-    const total = calculateShoppingTotal();
-    if (total <= 0) {
-      setShoppingMode(false);
-      return;
-    }
-
-    setConfirmModal({
-      isOpen: true,
-      title: "Log Expense",
-      message: `Your total is ₹${total.toFixed(2)}. Log this as a new expense?`,
-      onConfirm: async () => {
-        try {
-          const expenseText = `Shopping for '${selectedList?.name || 'Unknown'}' list, total was ${total.toFixed(2)}`;
-          await apiClient.post('/expenses/', { text: expenseText });
-          toast.success("Expense logged from your shopping trip!");
-          setShoppingMode(false);
-          setItemPrices({});
-        } catch (error) {
-          toast.error("Failed to log expense.");
-        }
+  const handleDeleteItem = async (itemId) => {
+    if (window.confirm('Are you sure you want to delete this item?')) {
+      try {
+        console.log('=== DELETE ITEM DEBUG ===');
+        console.log('Item ID:', itemId);
+        
+        await onDeleteItem(itemId);
+        console.log('Item deleted successfully');
+      } catch (error) {
+        console.error('=== ERROR DELETING ITEM ===');
+        console.error('Error:', error);
+        console.error('Error response:', error.response);
+        
+        const errorMessage = error.response?.data?.error || 
+                            error.response?.data?.detail || 
+                            error.message || 
+                            'Unknown error occurred';
+        
+        alert(`Failed to delete item: ${errorMessage}`);
       }
-    });
-  }, [calculateShoppingTotal, selectedList?.name]);
+    }
+  };
 
-  const displayItems = selectedList?.items || [];
-  const pendingItems = displayItems.filter(item => !item.is_completed) || [];
-  const completedItems = displayItems.filter(item => item.is_completed) || [];
-  
-  
-  // Early return if modal is not open
-  if (!isOpen) {
-    return null;
-  }
+  const filteredItems = (list.items || []).filter(item => {
+    const matchesSearch = !searchQuery || 
+      item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filterStatus === 'all' ||
+      (filterStatus === 'pending' && !item.is_completed) ||
+      (filterStatus === 'completed' && item.is_completed);
+    return matchesSearch && matchesFilter;
+  });
 
-  // Early return if no selected list
-  if (!selectedList) {
-    return (
-      <div 
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.target === e.currentTarget && onClose()}
-      >
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl border border-slate-700 p-8 text-center">
-          <div className="text-red-400 mb-4">No list selected</div>
-          <button
-            onClick={onClose}
-            className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const pendingItems = filteredItems.filter(item => !item.is_completed);
+  const completedItems = filteredItems.filter(item => item.is_completed);
+  const totalItems = list.items?.length || 0;
+  const completedCount = list.items?.filter(item => item.is_completed).length || 0;
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="list-items-title"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl border border-slate-700 w-full max-w-4xl max-h-[90vh] overflow-hidden animate-scale-in">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-700">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg">
-              <Package className="text-cyan-400" size={20} />
-            </div>
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className="bg-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-700"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-slate-700">
             <div>
-              <h3 id="list-items-title" className="text-xl font-bold text-white">{selectedList?.name || 'List Items'}</h3>
-              <p className="text-slate-400 text-sm">
-                {displayItems.length} items • {completedItems.length} completed
+              <h2 className="text-2xl font-bold text-white">{list.name}</h2>
+              <p className="text-slate-400 mt-1">
+                {totalItems} items • {completedCount} completed • {Math.round((completedCount / totalItems) * 100) || 0}% done
               </p>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {/* Shopping Mode Toggle */}
-            <button
-              onClick={() => setShoppingMode(!shoppingMode)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                shoppingMode 
-                  ? 'bg-green-500/20 text-green-400' 
-                  : 'bg-slate-700 text-slate-400 hover:text-white'
-              }`}
-            >
-              <ShoppingCart size={16} />
-              {shoppingMode ? 'Shopping Mode' : 'Enable Shopping'}
-            </button>
-            
-            <button
-              onClick={onClose}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-              aria-label="Close modal"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </div>
-
-        {/* Add Items Form */}
-        <div className="p-6 border-b border-slate-700">
-          <form onSubmit={handleAddItems} className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Zap className="absolute left-3 top-1/2 transform -translate-y-1/2 text-cyan-400" size={18} />
-              <input
-                type="text"
-                value={newItemText}
-                onChange={(e) => setNewItemText(e.target.value)}
-                placeholder="Add items with AI: 'milk 2 liters, bread, eggs dozen'"
-                className="w-full pl-10 pr-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
-                aria-label="Add new items"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={isAddingItem || !newItemText.trim()}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20 whitespace-nowrap"
-            >
-              {isAddingItem ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-              {isAddingItem ? 'Adding...' : 'Add Items'}
-            </button>
-          </form>
-        </div>
-
-        {/* Shopping Mode Summary */}
-        {shoppingMode && (
-          <div className="p-4 bg-green-500/10 border-b border-slate-700">
-            <div className="flex items-center justify-between">
-              <div className="text-green-400">
-                <span className="font-semibold">Shopping Total: ₹{Object.values(itemPrices).reduce((sum, price) => sum + (parseFloat(price) || 0), 0).toFixed(2)}</span>
-              </div>
+            <div className="flex items-center gap-3">
               <button
-                onClick={handleFinishShopping}
-                className="bg-green-600 hover:bg-green-500 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                onClick={handleShoppingMode}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
               >
-                Finish Shopping
+                <ShoppingCart size={16} />
+                Shopping Mode
+              </button>
+              {list.items?.filter(item => item.is_completed && item.price).length > 0 && (
+                <button
+                  onClick={handleAddToExpenses}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  Add to Expenses
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="p-2 text-slate-400 hover:text-white rounded-lg transition-colors"
+              >
+                <X size={24} />
               </button>
             </div>
           </div>
-        )}
 
-        {/* Items List */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Pending Items */}
-          {pendingItems.length > 0 && (
-            <div>
-              <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <Circle className="text-slate-400" size={18} />
-                Pending ({pendingItems.length})
-              </h4>
-              <div className="space-y-2">
-                {pendingItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-slate-700/50 rounded-lg hover:bg-slate-700/70 transition-colors"
-                  >
-                    <button
-                      onClick={() => handleToggleComplete(item)}
-                      disabled={item.isOptimistic || loadingItems.has(item.id)}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
-                        item.is_completed
-                          ? 'bg-green-500 border-green-500 text-white'
-                          : 'border-gray-300 hover:border-green-400'
-                      } ${(item.isOptimistic || loadingItems.has(item.id)) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      aria-label={item.is_completed ? 'Mark as incomplete' : 'Mark as complete'}
+          {/* Add Items Form */}
+          <div className="p-6 border-b border-slate-700 bg-slate-800/50">
+            <form onSubmit={handleAddItems} className="space-y-4">
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={newItemText}
+                  onChange={(e) => setNewItemText(e.target.value)}
+                  placeholder="Add items: milk, bread, eggs... (AI will parse multiple items)"
+                  className="flex-1 px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                />
+                <button
+                  type="submit"
+                  disabled={isAddingItem || !newItemText.trim()}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium transition-all"
+                >
+                  {isAddingItem ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Plus size={20} />
+                  )}
+                  {isAddingItem ? 'Adding...' : 'Add Items'}
+                </button>
+              </div>
+              <p className="text-sm text-slate-400">
+                💡 Tip: You can add multiple items at once. Our AI will automatically separate them for you!
+              </p>
+            </form>
+          </div>
+
+          {/* Search and Filter */}
+          <div className="p-6 border-b border-slate-700 bg-slate-800/30">
+            <div className="flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="all">All Items</option>
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Items List */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 max-h-[50vh]">
+            {/* Pending Items */}
+            {(filterStatus === 'all' || filterStatus === 'pending') && pendingItems.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-orange-400 rounded-full"></div>
+                  Pending ({pendingItems.length})
+                </h3>
+                <div className="space-y-3">
+                  {pendingItems.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-xl hover:bg-slate-700/70 transition-all group"
                     >
-                      {loadingItems.has(item.id) ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        item.is_completed && <Check className="w-3 h-3" />
-                      )}
-                    </button>
-                    
-                    <div className="flex-1">
-                      {editingItem === item.id ? (
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={editText}
-                            onChange={(e) => setEditText(e.target.value)}
-                            className="flex-1 bg-slate-600 text-white rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleSaveEdit(item.id);
-                              if (e.key === 'Escape') {
-                                setEditingItem(null);
-                                setEditText('');
-                              }
-                            }}
-                            autoFocus
-                          />
-                          <button
-                            onClick={() => handleSaveEdit(item.id)}
-                            className="text-green-400 hover:text-green-300"
-                          >
-                            <CheckCircle size={16} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full">
-                          <div className="flex-1">
-                            <span className={`${item.is_completed ? 'line-through text-gray-500' : ''} ${item.isOptimistic ? 'opacity-70 italic' : ''}`}>
-                              {item.name}
-                              {item.isOptimistic && <span className="text-xs text-gray-400 ml-2">(adding...)</span>}
-                            </span>
-                            {item.quantity && (
-                              <span className="text-slate-500 ml-2">({item.quantity})</span>
-                            )}
-                          </div>
-                          
-                          {shoppingMode && (
-                            <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                              <span className="text-slate-400">₹</span>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={itemPrices[item.id] || ''}
-                                onChange={(e) => setItemPrices(prev => ({ ...prev, [item.id]: e.target.value }))}
-                                className="w-20 bg-slate-600 text-white rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                                placeholder="0.00"
-                                aria-label={`Price for ${item.name}`}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-1 flex-shrink-0 mt-2 sm:mt-0">
                       <button
-                        onClick={() => handleEditItem(item)}
-                        className="p-1 text-slate-400 hover:text-cyan-400 transition-colors"
-                        aria-label={`Edit ${item.name}`}
+                        onClick={() => handleToggleComplete(item)}
+                        className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                          item.is_completed 
+                            ? 'border-green-400 bg-green-400' 
+                            : 'border-slate-400 hover:border-blue-400 bg-transparent'
+                        }`}
                       >
-                        <Edit2 size={14} />
+                        {item.is_completed && <Check className="w-4 h-4 text-white" />}
                       </button>
+                      
+                      <div className="flex-1">
+                        {editingItem === item.id ? (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              className="flex-1 bg-slate-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveEdit();
+                                if (e.key === 'Escape') {
+                                  setEditingItem(null);
+                                  setEditText('');
+                                }
+                              }}
+                              autoFocus
+                            />
+                            <button
+                              onClick={handleSaveEdit}
+                              className="text-green-400 hover:text-green-300 p-2"
+                            >
+                              <Check size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <span className="text-white font-medium">{item.name}</span>
+                                <div className="flex items-center gap-2 text-sm text-slate-400">
+                              {item.quantity && <span>Qty: {item.quantity}</span>}
+                              {item.unit && <span>({item.unit})</span>}
+                              {editingPrice === item.id ? (
+                                <div className="flex items-center gap-1">
+                                  <DollarSign size={14} className="text-green-400" />
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={priceText}
+                                    onChange={(e) => setPriceText(e.target.value)}
+                                    className="w-20 bg-slate-600 text-white rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleUpdatePrice(item.id, priceText);
+                                      if (e.key === 'Escape') {
+                                        setEditingPrice(null);
+                                        setPriceText('');
+                                      }
+                                    }}
+                                    autoFocus
+                                  />
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setEditingPrice(item.id);
+                                    setPriceText(item.price || '');
+                                  }}
+                                  className="flex items-center gap-1 text-green-400 hover:text-green-300 text-sm"
+                                >
+                                  <DollarSign size={14} />
+                                  {item.price ? `₹${item.price}` : 'Add Price'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => {
+                            setEditingItem(item.id);
+                            setEditText(item.name);
+                          }}
+                          className="p-2 text-slate-400 hover:text-blue-400 transition-colors"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteItem(item.id)}
+                          className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Completed Items */}
+            {(filterStatus === 'all' || filterStatus === 'completed') && completedItems.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                  Completed ({completedItems.length})
+                </h3>
+                <div className="space-y-3">
+                  {completedItems.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex items-center gap-3 p-4 bg-slate-700/30 rounded-xl opacity-75 hover:opacity-90 transition-all group"
+                    >
+                      <button
+                        onClick={() => handleToggleComplete(item)}
+                        className="w-6 h-6 rounded-full border-2 border-green-400 bg-green-400 flex items-center justify-center"
+                      >
+                        <Check className="w-4 h-4 text-white" />
+                      </button>
+                      
+                      <div className="flex-1 flex items-center justify-between">
+                        <span className="text-slate-300 line-through font-medium">{item.name}</span>
+                        {item.price && (
+                          <span className="text-green-400 font-medium">₹{item.price}</span>
+                        )}
+                      </div>
+                      
                       <button
                         onClick={() => handleDeleteItem(item.id)}
-                        className="text-red-500 hover:text-red-700 p-1"
-                        disabled={loadingItems.has(item.id)}
-                        aria-label={`Delete ${item.name}`}
+                        className="p-2 text-slate-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 size={16} />
                       </button>
-                    </div>
-                  </div>
-                ))}
+                    </motion.div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Completed Items */}
-          {completedItems.length > 0 && (
-            <div>
-              <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <CheckCircle className="text-green-400" size={18} />
-                Completed ({completedItems.length})
-              </h4>
-              <div className="space-y-2">
-                {completedItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-slate-700/30 rounded-lg opacity-75"
-                  >
-                    <button
-                      onClick={() => handleToggleComplete(item)}
-                      className="text-green-400 hover:text-slate-400 transition-colors flex-shrink-0"
-                      aria-label={`Mark ${item.name} as incomplete`}
-                    >
-                      <CheckCircle size={20} />
-                    </button>
-                    
-                    <div className="flex-1 min-w-0">
-                      <span className="text-slate-300 line-through break-words">{item.name}</span>
-                      {item.quantity && (
-                        <span className="text-slate-500 ml-2">({item.quantity})</span>
-                      )}
-                      {item.price && (
-                        <span className="text-green-400 ml-2">₹{item.price}</span>
-                      )}
-                    </div>
-                    
-                    <button
-                      onClick={() => handleDeleteItem(item.id)}
-                      className="text-red-500 hover:text-red-700 p-1 flex-shrink-0 mt-2 sm:mt-0"
-                      disabled={loadingItems.has(item.id)}
-                      aria-label={`Delete ${item.name}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+            {/* Empty State */}
+            {filteredItems.length === 0 && (
+              <div className="text-center py-12">
+                {searchQuery || filterStatus !== 'all' ? (
+                  <>
+                    <Search size={48} className="mx-auto text-slate-500 mb-4" />
+                    <h3 className="text-xl font-semibold text-slate-300 mb-2">No items found</h3>
+                    <p className="text-slate-400">Try adjusting your search or filter</p>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={48} className="mx-auto text-slate-500 mb-4" />
+                    <h3 className="text-xl font-semibold text-slate-300 mb-2">No Items Yet</h3>
+                    <p className="text-slate-400">Add your first items using the form above</p>
+                  </>
+                )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* Empty State */}
-          {displayItems.length === 0 && (
-            <div className="text-center py-12">
-              <Package size={48} className="mx-auto text-slate-500 mb-4" />
-              <h4 className="text-xl font-semibold text-slate-300 mb-2">No Items Yet</h4>
-              <p className="text-slate-400">
-                Add your first items using the AI-powered input above
-              </p>
+          {/* Footer */}
+          <div className="p-6 border-t border-slate-700 bg-slate-800/50">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-slate-400">
+                {filteredItems.length !== totalItems && (
+                  <span>Showing {filteredItems.length} of {totalItems} items</span>
+                )}
+              </div>
+              <button
+                onClick={onClose}
+                className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+              >
+                Close
+              </button>
             </div>
-          )}
-        </div>
-
-        <ConfirmModal
-          isOpen={confirmModal.isOpen}
-          onClose={() => setConfirmModal({ isOpen: false })}
-          onConfirm={() => {
-            if (confirmModal.onConfirm) confirmModal.onConfirm();
-            setConfirmModal({ isOpen: false });
-          }}
-          title={confirmModal.title || "Confirm Action"}
-          message={confirmModal.message || "Are you sure?"}
-        />
-      </div>
-    </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 

@@ -1,48 +1,66 @@
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.models import User
 from django.shortcuts import render
-from .models import Expense
-import json
-import os
-import google.generativeai as genai
-from datetime import datetime,timedelta,date
-import csv
+from django.core.exceptions import ValidationError
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+from django.conf import settings
 from django.utils import timezone
-
-# Import the new tools from Django REST Framework
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework import generics
 from django.db.models import Sum, DecimalField, Count, Avg, Q
 from django.db.models.functions import TruncMonth, TruncDate
-from .serializers import ExpenseSerializer
+from django.db import transaction
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status, generics, viewsets
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.decorators import action
+
+import json
+import os
+import csv
+import logging
+from datetime import datetime, timedelta, date
+import google.generativeai as genai
+
+from .models import Expense, ExpenseCategory, ExpenseTag, ExpenseAnalytics, ExpenseAIInsight
+from .serializers import ExpenseSerializer, ExpenseCategorySerializer, ExpenseTagSerializer, ExpenseAnalyticsSerializer
+from .services import ExpenseService, AIExpenseParser, ExpenseAdvancedService, ExpenseCategoryService, ExpenseTagService
+from .validators import ExpenseValidator, FilterValidator
 from budgets.models import Budget
 from .ai_insights import AIInsightsEngine
 from .advanced_analytics import AdvancedExpenseAnalytics
-from .models import ExpenseAIInsight
 
-# --- AI Configuration (No changes here) ---
+logger = logging.getLogger(__name__)
+
+# AI Configuration
 try:
-    genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+    genai.configure(api_key=os.environ.get("GOOGLE_API_KEY") or settings.GOOGLE_API_KEY)
     GEMINI_MODEL = genai.GenerativeModel('gemini-1.5-flash')
-    print("✅ Gemini AI Model configured successfully.")
-except KeyError:
+    logger.info("Gemini AI Model configured successfully")
+except (AttributeError, KeyError):
     GEMINI_MODEL = None
-    print("🔴 ERROR: GOOGLE_API_KEY environment variable not set. The AI will not work.")
+    logger.warning("GOOGLE_API_KEY not configured. AI features disabled.")
 
+class ExpensePagination(PageNumberPagination):
+    """Custom pagination for expenses"""
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
+# Core Views
 class ExpenseAPIView(APIView):
-    # This line is the security guard. It ensures only authenticated users can access this view.
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Get all expenses that belong to the currently logged-in user
-        expenses = Expense.objects.filter(user=request.user).order_by('display_id')
-        # Use the serializer to convert the data to JSON
-        serializer = ExpenseSerializer(expenses, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            expenses = Expense.objects.filter(user=request.user).order_by('-transaction_date')
+            serializer = ExpenseSerializer(expenses, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error fetching expenses: {e}")
+            return Response([], status=status.HTTP_200_OK)
     
     def post(self, request):
         user = request.user
@@ -90,27 +108,6 @@ class ExpenseAPIView(APIView):
             ]
         }}
 
-        Input: "bought groceries for 200 at BigBazar and coffee for 150 at Starbucks"
-        Output:
-        {{
-            "expenses": [
-                {{
-                    "amount": 200.00,
-                    "category": "Groceries",
-                    "vendor": "BigBazar",
-                    "description": "groceries",
-                    "transaction_date": "{datetime.now().strftime('%Y-%m-%d')}"
-                }},
-                {{
-                    "amount": 150.00,
-                    "category": "Food & Dining",
-                    "vendor": "Starbucks",
-                    "description": "coffee",
-                    "transaction_date": "{datetime.now().strftime('%Y-%m-%d')}"
-                }}
-            ]
-        }}
-
         **User's Text:** "{user_text}"
         **Your JSON Response:**
         """
@@ -122,7 +119,6 @@ class ExpenseAPIView(APIView):
         except Exception as e:
             return Response({'error': 'Failed to process text with AI.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # --- UPDATED and MORE ROBUST saving logic ---
         expense_list = ai_data.get('expenses', [])
         
         if not expense_list:
@@ -130,38 +126,26 @@ class ExpenseAPIView(APIView):
 
         created_expenses_ids = []
         try:
-            # Use a transaction to prevent race conditions
-            from django.db import transaction
-            
             with transaction.atomic():
-                # Get the highest display_id for this user to ensure sequential numbering
-                # Use select_for_update to lock the row and prevent race conditions
                 highest_display_id = Expense.objects.filter(user=user).order_by('-display_id').select_for_update().first()
-                next_display_id = 1  # Default starting ID
+                next_display_id = 1
                 if highest_display_id:
                     next_display_id = highest_display_id.display_id + 1
                     
                 for i, expense_data in enumerate(expense_list):
-                    # Use .get() with default values to prevent crashes if a key is missing
                     new_expense = Expense.objects.create(
                         user=user,
-                        display_id=next_display_id + i,  # Increment for each expense in batch
+                        display_id=next_display_id + i,
                         raw_text=user_text,
                         amount=expense_data.get('amount'),
-                        category=expense_data.get('category', 'Other'), # Default to 'Other'
-                        vendor=expense_data.get('vendor'), # Allows vendor to be missing
-                        description=expense_data.get('description'), # Add description field
+                        category=expense_data.get('category', 'Other'),
+                        vendor=expense_data.get('vendor'),
+                        description=expense_data.get('description'),
                         transaction_date=expense_data.get('transaction_date', datetime.now().strftime('%Y-%m-%d'))
                     )
                     created_expenses_ids.append(new_expense.expense_id)
-                    print(f"✅ Created expense ID: {new_expense.expense_id} with display_id: {new_expense.display_id}")
                 
-                print(f"✅ User '{user.username}' saved {len(created_expenses_ids)} new expenses.")
-
         except Exception as e:
-            # If saving fails, this will now give us a much more detailed error
-            print(f"🔴 DATABASE SAVE ERROR: {str(e)}")
-            print(f"🔴 PROBLEMATIC AI DATA: {expense_data}")
             return Response({'error': 'Failed to save expense to database.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response({
@@ -169,134 +153,103 @@ class ExpenseAPIView(APIView):
             'message': f'Successfully saved {len(created_expenses_ids)} expenses for user {user.username}.',
             'created_expense_ids': created_expenses_ids
         }, status=status.HTTP_201_CREATED)
+
+class ExpenseListCreateView(generics.ListCreateAPIView):
+    """List and create expenses with proper pagination and filtering"""
+    serializer_class = ExpenseSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = ExpensePagination
     
+    def get_queryset(self):
+        try:
+            filters = FilterValidator.validate_filters(self.request.query_params)
+            return ExpenseService.get_user_expenses(self.request.user, filters)
+        except ValidationError as e:
+            logger.warning(f"Invalid filters from user {self.request.user.username}: {e}")
+            return ExpenseService.get_user_expenses(self.request.user)
+    
+    def create(self, request, *args, **kwargs):
+        try:
+            validated_data = ExpenseValidator.validate_create_request(request.data)
+            
+            if not GEMINI_MODEL:
+                return Response(
+                    {'error': 'AI service not available'}, 
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            parser = AIExpenseParser(GEMINI_MODEL)
+            ai_data = parser.parse_expense_text(validated_data['text'])
+            
+            expenses = ExpenseService.create_expense_from_ai(
+                request.user, 
+                validated_data['text'], 
+                ai_data
+            )
+            
+            serializer = self.get_serializer(expenses, many=True)
+            
+            logger.info(f"Created {len(expenses)} expenses for user {request.user.username}")
+            return Response(
+                {
+                    'message': f'Successfully created {len(expenses)} expense(s)',
+                    'expenses': serializer.data
+                }, 
+                status=status.HTTP_201_CREATED
+            )
+            
+        except ValidationError as e:
+            logger.warning(f"Validation error for user {request.user.username}: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            logger.error(f"Unexpected error creating expense: {e}")
+            return Response(
+                {'error': 'Internal server error'}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class ExpenseDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    This view handles getting, updating, and deleting a single expense.
-    """
+    """This view handles getting, updating, and deleting a single expense."""
     permission_classes = [IsAuthenticated]
     serializer_class = ExpenseSerializer
     queryset = Expense.objects.all()
-    
-    # This tells the view to use the 'expense_id' field in the URL for lookup,
-    # instead of the default 'pk'.
     lookup_field = 'expense_id'
 
-    # This is a security measure to ensure users can only affect their own expenses
     def get_queryset(self):
         return self.queryset.filter(user=self.request.user)
+
+class ExpenseDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve, update, or delete a specific expense"""
+    serializer_class = ExpenseSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'expense_id'
+    
+    def get_queryset(self):
+        return Expense.objects.filter(user=self.request.user)
 
 class ExpenseSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @method_decorator(cache_page(60 * 10))
     def get(self, request):
-        user = request.user
-        today = date.today()
-
-        # Calculate start of the week (assuming Monday is the first day)
-        start_of_week = today - timedelta(days=today.weekday())
-
-        # Calculate totals using Django's aggregation features
-        today_sum = Expense.objects.filter(
-            user=user, transaction_date=today
-        ).aggregate(total=Sum('amount', output_field=DecimalField()))['total'] or 0.00
-
-        week_sum = Expense.objects.filter(
-            user=user, transaction_date__gte=start_of_week
-        ).aggregate(total=Sum('amount', output_field=DecimalField()))['total'] or 0.00
-
-        month_sum = Expense.objects.filter(
-            user=user, transaction_date__year=today.year, transaction_date__month=today.month
-        ).aggregate(total=Sum('amount', output_field=DecimalField()))['total'] or 0.00
-
-        # --- THIS IS THE CORRECTED LOGIC ---
-        current_budget_amount = 0.00
-        try:
-            # Find an active budget where today's date is between its start and end dates
-            # This is more flexible than relying on year/month fields
-            budget = Budget.objects.get(
-                user=user,
-                is_active=True,
-                start_date__lte=today,
-                end_date__gte=today
-            )
-            current_budget_amount = budget.amount
-        except Budget.DoesNotExist:
-            # It's okay if no budget is set for the current period. Don't crash.
-            print(f"No active budget found for user {user.username} for today's date.")
-        except Budget.MultipleObjectsReturned:
-            # Handle case where user might have multiple overlapping budgets
-            print(f"Warning: Multiple active budgets found for user {user.username}. Using the first one.")
-            budget = Budget.objects.filter(
-                user=user, is_active=True, start_date__lte=today, end_date__gte=today
-            ).first()
-            if budget:
-                current_budget_amount = budget.amount
-
-        summary_data = {
-            'today': today_sum,
-            'week': week_sum,
-            'month': month_sum,
-            'current_budget': current_budget_amount
-        }
-
+        summary_data = ExpenseService.get_expense_summary(request.user)
         return Response(summary_data, status=status.HTTP_200_OK)
-
 
 class ExpenseAnalyticsView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @method_decorator(cache_page(60 * 5))
     def get(self, request):
-        user = request.user
         period = request.GET.get('period', 'month')
-        
-        # Get date range based on period
-        now = datetime.now()
-        if period == 'month':
-            start_date = now.replace(day=1)
-        elif period == 'quarter':
-            quarter_start = ((now.month - 1) // 3) * 3 + 1
-            start_date = now.replace(month=quarter_start, day=1)
-        elif period == 'year':
-            start_date = now.replace(month=1, day=1)
-        else:
-            start_date = now.replace(day=1)
-        
-        expenses = Expense.objects.filter(
-            user=user,
-            transaction_date__gte=start_date.date()
-        )
-        
-        # Summary statistics
-        summary = expenses.aggregate(
-            total_amount=Sum('amount'),
-            expense_count=Count('expense_id'),
-            average_amount=Avg('amount')
-        )
-        
-        # Calculate daily average
-        days_in_period = (now.date() - start_date.date()).days + 1
-        daily_average = summary['total_amount'] / days_in_period if summary['total_amount'] else 0
-        
-        # Category breakdown
-        category_breakdown = expenses.values('category').annotate(
-            total=Sum('amount'),
-            count=Count('expense_id')
-        ).order_by('-total')
-        
-        # Payment method breakdown
-        payment_method_breakdown = expenses.values('payment_method').annotate(
-            total=Sum('amount'),
-            count=Count('expense_id')
-        ).order_by('-total')
+        analytics_data = ExpenseService.get_analytics_data(request.user, period)
         
         return Response({
             'summary': {
-                'total_amount': float(summary['total_amount'] or 0),
-                'expense_count': summary['expense_count'],
-                'average_amount': float(summary['average_amount'] or 0),
-                'daily_average': float(daily_average)
+                'total_amount': float(analytics_data['summary']['total_amount'] or 0),
+                'expense_count': analytics_data['summary']['expense_count'],
+                'average_amount': float(analytics_data['summary']['average_amount'] or 0),
+                'daily_average': float(analytics_data['summary']['total_amount'] or 0) / max(1, (analytics_data['date_range']['end'] - analytics_data['date_range']['start']).days)
             },
             'category_breakdown': [
                 {
@@ -304,7 +257,7 @@ class ExpenseAnalyticsView(APIView):
                     'total': float(item['total']),
                     'count': item['count']
                 }
-                for item in category_breakdown
+                for item in analytics_data['category_breakdown']
             ],
             'payment_method_breakdown': [
                 {
@@ -312,10 +265,9 @@ class ExpenseAnalyticsView(APIView):
                     'total': float(item['total']),
                     'count': item['count']
                 }
-                for item in payment_method_breakdown
+                for item in analytics_data['payment_method_breakdown']
             ]
         })
-
 
 class ExpenseTrendsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -324,7 +276,6 @@ class ExpenseTrendsView(APIView):
         user = request.user
         months = int(request.GET.get('months', 6))
         
-        # Get expenses from the last N months
         start_date = datetime.now() - timedelta(days=months * 30)
         
         monthly_trends = Expense.objects.filter(
@@ -348,14 +299,12 @@ class ExpenseTrendsView(APIView):
             ]
         })
 
-
 class ExpenseBudgetAnalysisView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
         
-        # Get current month's expenses by category
         now = datetime.now()
         start_of_month = now.replace(day=1)
         
@@ -366,8 +315,6 @@ class ExpenseBudgetAnalysisView(APIView):
             spent=Sum('amount')
         )
         
-        # Get user's budgets - Budget model doesn't have category field
-        # For now, return empty budget analysis since Budget model needs category field
         budget_analysis = []
         
         return Response({
@@ -380,18 +327,28 @@ class ExpenseBulkOperationsView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
-        print(f"🔍 Bulk Operations Request Data: {request.data}")
-        action = request.data.get('action') or request.data.get('operation')  # Support both
+        try:
+            validated_data = ExpenseValidator.validate_bulk_operation(request.data)
+            
+            result = ExpenseService.bulk_update_expenses(
+                request.user,
+                validated_data['expense_ids'],
+                validated_data['operation'],
+                category=validated_data.get('category')
+            )
+            
+            return Response(result, status=status.HTTP_200_OK)
+            
+        except ValidationError as e:
+            logger.warning(f"Bulk operation validation error: {e}")
+            
+        # Fallback to original logic
+        action = request.data.get('action') or request.data.get('operation')
         expense_ids = request.data.get('expense_ids', [])
         
-        print(f"🔍 Action: {action}")
-        print(f"🔍 Expense IDs: {expense_ids}")
-        
         if not action or not expense_ids:
-            print(f"🔴 Missing required fields - Action: {action}, Expense IDs: {expense_ids}")
             return Response({'error': 'Action and expense_ids are required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Filter expenses to only those belonging to the user
         expenses = Expense.objects.filter(expense_id__in=expense_ids, user=request.user)
         
         if action == 'delete':
@@ -410,9 +367,8 @@ class ExpenseBulkOperationsView(APIView):
         elif action == 'duplicate':
             duplicated_count = 0
             for expense in expenses:
-                # Create a duplicate with a new ID
-                expense.pk = None  # This will create a new instance
-                expense.expense_id = None  # Let the model generate a new ID
+                expense.pk = None
+                expense.expense_id = None
                 expense.save()
                 duplicated_count += 1
             return Response({'message': f'Successfully duplicated {duplicated_count} expenses'}, status=status.HTTP_200_OK)
@@ -420,80 +376,186 @@ class ExpenseBulkOperationsView(APIView):
         else:
             return Response({'error': f'Invalid action: {action}'}, status=status.HTTP_400_BAD_REQUEST)
 
-
 class ExpenseExportView(APIView):
-    """Export expenses to CSV format"""
+    """Export expenses to various formats"""
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
-        print(f"🔍 Export request data: {request.data}")
+        try:
+            validated_data = ExpenseValidator.validate_export_request(request.data)
+            
+            expenses = Expense.objects.filter(
+                expense_id__in=validated_data['expense_ids'], 
+                user=request.user
+            ).order_by('-transaction_date')
+            
+            if validated_data['format'] == 'csv':
+                return self._export_csv(expenses)
+            else:
+                return Response(
+                    {'error': 'Format not supported yet'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except ValidationError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Export error: {e}")
+            
+        # Fallback to original logic
         expense_ids = request.data.get('expense_ids', [])
         export_format = request.data.get('format', 'csv')
         
-        print(f"🔍 Expense IDs: {expense_ids}")
-        print(f"🔍 Format: {export_format}")
-        
         if not expense_ids:
-            print("🔴 No expense IDs provided")
             return Response({'error': 'expense_ids are required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Filter expenses to only those belonging to the user
         expenses = Expense.objects.filter(expense_id__in=expense_ids, user=request.user).order_by('-transaction_date')
-        print(f"🔍 Found {expenses.count()} expenses for user {request.user.username}")
         
         if export_format == 'csv':
-            response = HttpResponse(content_type='text/csv')
-            response['Content-Disposition'] = f'attachment; filename="expenses_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
-            response['Access-Control-Expose-Headers'] = 'Content-Disposition'
-            
-            writer = csv.writer(response)
-            # Write header
-            writer.writerow(['Date', 'Amount (₹)', 'Category', 'Vendor', 'Description', 'Payment Method'])
-            
-            # Write expense data
-            for expense in expenses:
-                row = [
-                    expense.transaction_date.strftime('%Y-%m-%d') if expense.transaction_date else '',
-                    f"₹{expense.amount}",
-                    expense.category or '',
-                    expense.vendor or '',
-                    expense.description or '',
-                    expense.payment_method or 'Not specified'
-                ]
-                writer.writerow(row)
-                print(f"🔍 Writing row: {row}")
-            
-            print(f"✅ CSV export completed for {expenses.count()} expenses")
-            return response
+            return self._export_csv(expenses)
         
         return Response({'error': 'Unsupported export format'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    def _export_csv(self, expenses):
+        """Export expenses as CSV"""
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="expenses_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+        response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+        
+        writer = csv.writer(response)
+        writer.writerow(['Date', 'Amount (₹)', 'Category', 'Vendor', 'Description', 'Payment Method'])
+        
+        for expense in expenses:
+            writer.writerow([
+                expense.transaction_date.strftime('%Y-%m-%d') if expense.transaction_date else '',
+                f"₹{expense.amount}",
+                expense.category or '',
+                expense.vendor or '',
+                expense.description or '',
+                expense.payment_method or 'Not specified'
+            ])
+        
+        logger.info(f"Exported {expenses.count()} expenses as CSV")
+        return response
 
+# Advanced Views from advanced_views.py
+class ExpenseCategoryViewSet(viewsets.ModelViewSet):
+    serializer_class = ExpenseCategorySerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return ExpenseCategory.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
+class ExpenseTagViewSet(viewsets.ModelViewSet):
+    serializer_class = ExpenseTagSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return ExpenseTag.objects.filter(user=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class ExpenseAdvancedViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+    
+    @action(detail=False, methods=['get'])
+    def analytics(self, request):
+        """Get comprehensive expense analytics"""
+        try:
+            period = request.query_params.get('period', 'month')
+            analytics_data = ExpenseAdvancedService.get_comprehensive_analytics(request.user, period)
+            print(f"Analytics data: {analytics_data}")
+            return Response(analytics_data)
+        except Exception as e:
+            logger.error(f"Analytics error: {e}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'])
+    def trends(self, request):
+        """Get spending trends and patterns"""
+        months = int(request.query_params.get('months', 6))
+        trends_data = ExpenseAdvancedService.get_spending_trends(request.user, months)
+        return Response(trends_data)
+    
+    @action(detail=False, methods=['get'], url_path='budget-analysis')
+    def budget_analysis(self, request):
+        """Analyze spending against budgets"""
+        budget_data = ExpenseAdvancedService.get_budget_analysis(request.user)
+        return Response(budget_data)
+    
+    @action(detail=False, methods=['post'])
+    def bulk_categorize(self, request):
+        """Bulk categorize expenses using AI or rules"""
+        expense_ids = request.data.get('expense_ids', [])
+        new_category = request.data.get('category')
+        
+        if not expense_ids or not new_category:
+            return Response(
+                {'error': 'expense_ids and category are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        result = ExpenseAdvancedService.bulk_categorize_expenses(request.user, expense_ids, new_category)
+        return Response(result)
+    
+    @action(detail=False, methods=['post'])
+    def duplicate_expense(self, request):
+        """Duplicate an existing expense"""
+        expense_id = request.data.get('expense_id')
+        
+        try:
+            result = ExpenseAdvancedService.duplicate_expense(request.user, expense_id)
+            return Response(result)
+        except Expense.DoesNotExist:
+            return Response(
+                {'error': 'Expense not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=False, methods=['get'])
+    def search(self, request):
+        """Advanced expense search"""
+        search_params = {
+            'q': request.query_params.get('q', ''),
+            'category': request.query_params.get('category'),
+            'vendor': request.query_params.get('vendor'),
+            'payment_method': request.query_params.get('payment_method'),
+            'min_amount': request.query_params.get('min_amount'),
+            'max_amount': request.query_params.get('max_amount'),
+            'start_date': request.query_params.get('start_date'),
+            'end_date': request.query_params.get('end_date')
+        }
+        
+        result = ExpenseAdvancedService.search_expenses(request.user, search_params)
+        return Response(result)
+
+# AI and Advanced Analytics Views
 class AIInsightsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         user = request.user
         force_refresh = request.query_params.get('refresh', 'false').lower() == 'true'
-        cache_duration_minutes = 60 # Cache for 1 hour
+        cache_duration_minutes = 60
 
         try:
             insight_cache = ExpenseAIInsight.objects.get(user=user)
             is_stale = timezone.now() - insight_cache.generated_at > timedelta(minutes=cache_duration_minutes)
 
-            # If not forcing a refresh and the cache is not stale, return cached data
             if not force_refresh and not is_stale:
                 return Response(insight_cache.insights_data)
 
         except ExpenseAIInsight.DoesNotExist:
-            insight_cache = None # No cache exists yet
+            insight_cache = None
 
-        # If we are here, we need to generate new insights
         try:
             engine = AIInsightsEngine(user)
             new_insights = engine.generate_insights()
 
-            # Save the new insights to the cache
             if insight_cache:
                 insight_cache.insights_data = new_insights
                 insight_cache.save()
@@ -504,7 +566,6 @@ class AIInsightsView(APIView):
 
         except Exception as e:
             return Response({"error": f"Failed to generate AI insights: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 class AdvancedAnalyticsView(APIView):
     """Advanced analytics endpoint with predictive insights"""
@@ -523,7 +584,6 @@ class AdvancedAnalyticsView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-
 class BudgetAnalysisView(APIView):
     """Budget analysis endpoint"""
     permission_classes = [IsAuthenticated]
@@ -538,7 +598,6 @@ class BudgetAnalysisView(APIView):
                 {'error': f'Failed to generate budget analysis: {str(e)}'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 
 class TrendsAnalysisView(APIView):
     """Trends analysis endpoint"""

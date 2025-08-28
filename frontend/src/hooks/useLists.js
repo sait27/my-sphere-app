@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import apiClient from '../api/axiosConfig';
 import toast from 'react-hot-toast';
+import { handleApiError } from '../utils/errorHandler';
 
 export const useLists = () => {
   const [lists, setLists] = useState([]);
@@ -86,14 +87,47 @@ export const useLists = () => {
   // Create new list
   const createList = useCallback(async (listData) => {
     try {
-      const response = await apiClient.post('/lists/', listData);
+      console.log('Creating list with data:', listData);
+      
+      // Ensure all required fields are present
+      const cleanedData = {
+        name: listData.name?.trim(),
+        description: listData.description?.trim() || '',
+        list_type: listData.list_type || 'checklist',
+        priority: listData.priority || 'medium',
+        category: listData.category || 'general'
+      };
+      
+      console.log('Cleaned data for API:', cleanedData);
+      
+      const response = await apiClient.post('/lists/', cleanedData);
       const newList = response.data;
       
+      console.log('List created successfully:', newList);
       setLists(prev => [newList, ...prev]);
-      toast.success(`List "${newList.name}" created successfully!`);
       return newList;
     } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Failed to create list';
+      console.error('Create list error:', err);
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
+      
+      let errorMsg = 'Failed to create list';
+      if (err.response?.data) {
+        if (typeof err.response.data === 'string') {
+          errorMsg = err.response.data;
+        } else if (err.response.data.error) {
+          errorMsg = err.response.data.error;
+        } else if (err.response.data.detail) {
+          errorMsg = err.response.data.detail;
+        } else {
+          // Handle validation errors
+          const errors = Object.entries(err.response.data)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+            .join('; ');
+          errorMsg = `Validation error: ${errors}`;
+        }
+      }
+      
       toast.error(errorMsg);
       throw err;
     }
@@ -106,14 +140,13 @@ export const useLists = () => {
       const updatedList = response.data;
       
       setLists(prev => prev.map(list => 
-        list.id === listId ? updatedList : list
+        list.id === listId ? { ...list, ...updatedList } : list
       ));
       
       if (selectedList?.id === listId) {
-        setSelectedList(updatedList);
+        setSelectedList(prev => ({ ...prev, ...updatedList }));
       }
       
-      toast.success('List updated successfully!');
       return updatedList;
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Failed to update list';
@@ -133,7 +166,7 @@ export const useLists = () => {
         setSelectedList(null);
       }
       
-      toast.success('List deleted successfully!');
+      return true;
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Failed to delete list';
       toast.error(errorMsg);
@@ -149,7 +182,6 @@ export const useLists = () => {
       });
       const duplicatedList = response.data;
       setLists(prev => [duplicatedList, ...prev]);
-      toast.success('List duplicated successfully!');
       return duplicatedList;
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Failed to duplicate list';
@@ -175,6 +207,11 @@ export const useLists = () => {
         return listData;
       });
       
+      // Also update the lists array to keep it in sync
+      setLists(prev => prev.map(list => 
+        list.id === listId ? { ...list, ...listData } : list
+      ));
+      
       return listData;
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Failed to fetch list details';
@@ -188,7 +225,21 @@ export const useLists = () => {
   const addItemsWithAI = useCallback(async (listId, text) => {
     try {
       console.log('Sending AI parsing request:', { listId, text });
-      const response = await apiClient.post(`/lists/${listId}/add_items/`, { text });
+      
+      // Try the correct endpoint
+      let response;
+      try {
+        response = await apiClient.post(`/lists/${listId}/add_items/`, { text });
+      } catch (firstError) {
+        console.log('First add_items endpoint failed, trying alternative');
+        if (firstError.response?.status === 404) {
+          // Try alternative endpoint structure
+          response = await apiClient.post(`/lists/${listId}/items/`, { text });
+        } else {
+          throw firstError;
+        }
+      }
+      
       const { list: updatedList, status: statusMessage } = response.data;
       console.log('AI parsing response:', response.data);
 
@@ -199,12 +250,12 @@ export const useLists = () => {
 
       // Update the main lists array with the new data.
       setLists(prev => 
-        prev.map(list => (list.id === listId ? updatedList : list))
+        prev.map(list => (list.id === listId ? { ...list, ...updatedList } : list))
       );
       
       // Also update the selectedList if it's the one being modified
       if (selectedList?.id === listId) {
-        setSelectedList(updatedList);
+        setSelectedList(prev => ({ ...prev, ...updatedList }));
       }
       
       toast.success(statusMessage || 'Items added successfully!');
@@ -256,7 +307,6 @@ export const useLists = () => {
           : list
       ));
       
-      toast.success('Item added successfully!');
       return newItem;
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Failed to add item';
@@ -278,60 +328,113 @@ export const useLists = () => {
     }
 
     try {
-      const response = await apiClient.patch(`/lists/items/${itemId}/`, updateData);
+      console.log('API Call: PATCH /lists/items/' + itemId + '/', updateData);
+      
+      // Try the correct endpoint first
+      let response;
+      try {
+        response = await apiClient.patch(`/lists/items/${itemId}/`, updateData);
+      } catch (firstError) {
+        console.log('First endpoint failed, trying alternative:', firstError.response?.status);
+        // If that fails, try the alternative endpoint structure
+        if (firstError.response?.status === 404) {
+          response = await apiClient.patch(`/lists/${selectedList.id}/items/${itemId}/`, updateData);
+        } else {
+          throw firstError;
+        }
+      }
+      
+      console.log('Update response:', response.data);
       const updatedItem = response.data;
       
-      // Update selectedList state
+      // Update selectedList state immediately for better UX
       setSelectedList(prev => ({
         ...prev,
         items: prev.items.map(item => 
-          item.id === itemId ? updatedItem : item
+          item.id === itemId ? { ...item, ...updatedItem } : item
         )
       }));
       
       // Update lists array as well
       setLists(prev => prev.map(list => 
         list.id === selectedList.id 
-          ? { ...list, items: list.items?.map(item => item.id === itemId ? updatedItem : item) || [] }
+          ? { 
+              ...list, 
+              items: list.items?.map(item => 
+                item.id === itemId ? { ...item, ...updatedItem } : item
+              ) || [] 
+            }
           : list
       ));
       
-      // Only show toast for significant updates
-      if (updateData.name || updateData.description) {
-        toast.success('Item updated successfully!');
-      }
-      
       return updatedItem;
     } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Failed to update item';
-      toast.error(errorMsg);
+      console.error('Update item error:', err);
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
+      console.error('Error config:', err.config);
+      
+      // Rollback on error
+      setSelectedList(prev => ({
+        ...prev,
+        items: prev.items.map(item => 
+          item.id === itemId ? originalItem : item
+        )
+      }));
+      
+      const errorMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to update item';
+      console.error('Item update failed:', errorMsg);
       throw err;
     }
   }, [selectedList]);
 
   // Delete item
   const deleteItem = useCallback(async (itemId) => {
+    if (!selectedList?.items) {
+      throw new Error('No list selected or items not loaded');
+    }
+
+    // Store original items for rollback
+    const originalItems = selectedList.items;
+    
     try {
-      await apiClient.delete(`/lists/items/${itemId}/`);
+      // Optimistically update UI first
+      setSelectedList(prev => ({
+        ...prev,
+        items: prev.items.filter(item => item.id !== itemId)
+      }));
       
-      // Update selected list items
-      if (selectedList?.items) {
-        setSelectedList(prev => ({
-          ...prev,
-          items: prev.items.filter(item => item.id !== itemId)
-        }));
-      }
-      
-      // Update lists array as well
       setLists(prev => prev.map(list => 
         list.id === selectedList?.id 
           ? { ...list, items: list.items?.filter(item => item.id !== itemId) || [] }
           : list
       ));
       
-      // Don't show toast here - let the component handle it
+      // Then make the API call with proper endpoint
+      try {
+        await apiClient.delete(`/lists/items/${itemId}/`);
+      } catch (firstError) {
+        if (firstError.response?.status === 404) {
+          await apiClient.delete(`/lists/${selectedList.id}/items/${itemId}/`);
+        } else {
+          throw firstError;
+        }
+      }
+      
       return true;
     } catch (err) {
+      // Rollback on error
+      setSelectedList(prev => ({
+        ...prev,
+        items: originalItems
+      }));
+      
+      setLists(prev => prev.map(list => 
+        list.id === selectedList?.id 
+          ? { ...list, items: originalItems }
+          : list
+      ));
+      
       const errorMsg = err.response?.data?.error || 'Failed to delete item';
       toast.error(errorMsg);
       throw err;
@@ -350,10 +453,6 @@ export const useLists = () => {
       // Refresh lists after bulk operation
       await fetchLists();
       
-      // Clear selections
-      setSelectedItems(new Set());
-      
-      toast.success(`Bulk ${operation.replace('bulk_', '').replace('_', ' ')} completed!`);
       return response.data;
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Bulk operation failed';
@@ -361,6 +460,41 @@ export const useLists = () => {
       throw err;
     }
   }, [fetchLists]);
+  
+  // Bulk update items
+  const bulkUpdateItems = useCallback(async (updates) => {
+    try {
+      const response = await apiClient.post('/lists/items/bulk-update/', {
+        updates
+      });
+      
+      // Update local state with the changes
+      if (selectedList?.items) {
+        const updatedItems = selectedList.items.map(item => {
+          const update = updates.find(u => u.item_id === item.id);
+          return update ? { ...item, ...update.data } : item;
+        });
+        
+        setSelectedList(prev => ({
+          ...prev,
+          items: updatedItems
+        }));
+        
+        // Also update the lists array
+        setLists(prev => prev.map(list => 
+          list.id === selectedList.id 
+            ? { ...list, items: updatedItems }
+            : list
+        ));
+      }
+      
+      return response.data;
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || 'Bulk update failed';
+      toast.error(errorMsg);
+      throw err;
+    }
+  }, [selectedList]);
 
   // Toggle item selection
   const toggleItemSelection = useCallback((itemId) => {
@@ -408,7 +542,7 @@ export const useLists = () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      toast.success('Lists exported successfully!');
+      return true;
     } catch (err) {
       const errorMsg = err.response?.data?.error || 'Export failed';
       toast.error(errorMsg);
@@ -419,16 +553,28 @@ export const useLists = () => {
 
   const selectedItemsCount = selectedItems.size;
   const hasSelectedItems = selectedItemsCount > 0;
+  
+  // Clear selected items when lists change
+  useEffect(() => {
+    setSelectedItems(new Set());
+  }, [lists]);
 
   // Statistics
   const stats = useMemo(() => {
-    if (!lists) return {};
+    if (!lists || lists.length === 0) return {
+      total: 0,
+      active: 0,
+      completed: 0,
+      shared: 0,
+      favorites: 0
+    };
     
     return {
       total: lists.length,
-      active: lists.filter(list => list.completion_percentage < 100).length,
-      completed: lists.filter(list => list.completion_percentage === 100).length,
-      shared: lists.filter(list => list.is_shared).length
+      active: lists.filter(list => (list.completion_percentage || 0) < 100).length,
+      completed: lists.filter(list => (list.completion_percentage || 0) === 100).length,
+      shared: lists.filter(list => list.is_shared).length,
+      favorites: lists.filter(list => list.is_favorite).length
     };
   }, [lists]);
 
@@ -458,6 +604,7 @@ export const useLists = () => {
     updateItem,
     deleteItem,
     bulkOperations,
+    bulkUpdateItems,
     exportLists,
     
     // Selection management

@@ -1,368 +1,404 @@
-// components/ListCard.jsx
-
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { 
-  ListChecks, Edit3, Trash2, Copy, Share2, Eye, 
-  CheckCircle, Circle, Calendar, Star, Users,
-  MoreHorizontal, Archive, Target, TrendingUp
+  MoreVertical, Star, Edit3, Trash2, Copy, Eye, 
+  CheckCircle, Clock, Target, ShoppingCart
 } from 'lucide-react';
 
 const ListCard = ({ 
   list, 
-  index, 
-  viewMode = 'grid', 
-  bulkMode = false, 
-  isSelected = false, 
-  onSelect, 
+  viewMode = 'grid',
   onEdit, 
   onDelete, 
   onDuplicate, 
-  onViewDetails
+  onView,
+  onToggleFavorite,
+  onShoppingMode,
+  isSelected,
+  onSelect,
+  isPending,
+  selectionMode = false
 }) => {
-  const [showActions, setShowActions] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(list.name);
+  
+  const progress = list.completion_percentage || 0;
+  const completedItems = list.completed_items || 0;
+  const totalItems = list.items_count || list.items?.length || 0;
+  const pendingItems = totalItems - completedItems;
+
+  const priorityColors = {
+    low: 'from-green-400 to-green-500',
+    medium: 'from-yellow-400 to-orange-500', 
+    high: 'from-red-400 to-red-500'
+  };
+
+  const typeIcons = {
+    checklist: '✓',
+    todo: '📋',
+    shopping: '🛒',
+    notes: '📝',
+    wishlist: '⭐'
+  };
 
   const handleEdit = async () => {
-    if (!editName.trim() || editName.trim() === list.name) {
-      setIsEditing(false);
-      setEditName(list.name);
-      return;
+    if (editName.trim() && editName !== list.name) {
+      try {
+        await onEdit({ ...list, name: editName.trim() });
+      } catch (error) {
+        console.error('Failed to update list name');
+      }
     }
-    try {
-      await onEdit(list.id, { name: editName.trim() });
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Failed to edit list name:', error);
-      // Optionally, show a toast notification for the error
-    }
+    setIsEditing(false);
   };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleEdit();
-    } else if (e.key === 'Escape') {
-      setEditName(list.name);
-      setIsEditing(false);
-    }
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'urgent': return 'text-red-400 bg-red-500/20';
-      case 'high': return 'text-orange-400 bg-orange-500/20';
-      case 'medium': return 'text-yellow-400 bg-yellow-500/20';
-      case 'low': return 'text-green-400 bg-green-500/20';
-      default: return 'text-slate-400 bg-slate-500/20';
-    }
-  };
-
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'shopping': return '🛒';
-      case 'todo': return '✅';
-      case 'inventory': return '📦';
-      case 'wishlist': return '⭐';
-      case 'packing': return '🧳';
-      case 'recipe': return '👨‍🍳';
-      default: return '📝';
-    }
-  };
-
-  const completionPercentage = list.completion_percentage || 0;
-  const isCompleted = completionPercentage === 100;
 
   if (viewMode === 'list') {
     return (
-      <div 
-        className={`group bg-gradient-to-r from-slate-800/50 to-slate-900/50 backdrop-blur-xl p-4 rounded-xl border transition-all duration-300 hover:shadow-lg animate-slide-up ${
-          isSelected 
-            ? 'border-cyan-500/50 bg-cyan-500/10' 
-            : 'border-slate-700/50 hover:border-slate-600/50'
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: isPending ? 0.7 : 1, y: 0 }}
+        className={`bg-slate-800/50 backdrop-blur-sm border rounded-xl p-4 hover:bg-slate-800/70 transition-all group ${
+          isSelected ? 'border-blue-500 bg-blue-500/10' : 'border-slate-700/50 hover:border-slate-600'
         }`}
-        style={{animationDelay: `${0.05 * index}s`}}
-        role="article"
-        aria-label={`List: ${list.name}`}
       >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          {bulkMode && (
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={onSelect}
-              className="w-4 h-4 text-cyan-600 bg-slate-700 border-slate-600 rounded focus:ring-cyan-500"
-            />
-          )}
-          
-          <div className="flex items-center gap-3 flex-1">
-            <div className="text-2xl">{getTypeIcon(list.list_type)}</div>
-            
-            <div className="flex-1">
+        <div className="flex items-center gap-4">
+          {/* Selection Checkbox */}
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => {
+              e.stopPropagation();
+              onSelect(e.target.checked);
+            }}
+            className="w-4 h-4 text-blue-500 bg-transparent border-slate-400 rounded focus:ring-blue-500"
+          />
+
+          {/* List Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{typeIcons[list.list_type] || '📋'}</span>
               {isEditing ? (
                 <input
-                  type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   onBlur={handleEdit}
-                  onKeyDown={handleKeyPress}
-                  className="bg-slate-700 text-white rounded px-2 py-1 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  onKeyPress={(e) => e.key === 'Enter' && handleEdit()}
+                  className="bg-transparent border-b border-blue-500 text-white focus:outline-none"
                   autoFocus
                 />
               ) : (
-                <h3 
-                  className={`text-lg font-semibold cursor-pointer hover:text-cyan-400 transition-colors ${
-                    isCompleted ? 'text-green-400' : 'text-white'
-                  }`}
-                  onClick={() => onViewDetails(list)}
-                >
-                  {list.name}
-                </h3>
+                <h3 className="font-semibold text-white truncate">{list.name}</h3>
               )}
-              
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-slate-400 mt-1">
-                <span>{list.items_count || 0} items</span>
-                <span>{list.completed_items_count || 0} completed</span>
-                <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${getPriorityColor(list.priority)}`}>
+              {list.priority && (
+                <span className={`px-2 py-1 text-xs rounded-full bg-gradient-to-r ${priorityColors[list.priority]} text-white`}>
                   {list.priority}
                 </span>
-                {list.is_shared && (
-                  <div className="flex items-center gap-1 whitespace-nowrap">
-                    <Users size={12} />
-                    <span>Shared</span>
-                  </div>
+              )}
+              {list.is_favorite && (
+                <Star className="w-4 h-4 text-yellow-400" fill="currentColor" />
+              )}
+            </div>
+            <div className="flex items-center gap-4 text-sm text-slate-400 mt-1">
+              <span>{totalItems} items</span>
+              <span>{progress.toFixed(0)}% complete</span>
+              <span>{new Date(list.updated_at).toLocaleDateString()}</span>
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="w-24 h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-blue-400 to-purple-500 transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={() => onView(list)}
+              className="p-2 text-slate-400 hover:text-blue-400 transition-colors"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="p-2 text-slate-400 hover:text-yellow-400 transition-colors"
+            >
+              <Edit3 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onToggleFavorite(list)}
+              className={`p-2 transition-colors ${
+                list.is_favorite ? 'text-yellow-400' : 'text-slate-400 hover:text-yellow-400'
+              }`}
+            >
+              <Star className="w-4 h-4" fill={list.is_favorite ? 'currentColor' : 'none'} />
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-2 text-slate-400 hover:text-white transition-colors"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              
+              {showMenu && (
+                <div className="absolute right-0 top-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-30 min-w-[140px]">
+                  <button
+                    onClick={() => {
+                      onDuplicate(list);
+                      setShowMenu(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Duplicate
+                  </button>
+                  {(list.list_type === 'shopping' || list.list_type === 'checklist') && onShoppingMode && (
+                    <button
+                      onClick={() => {
+                        onShoppingMode(list);
+                        setShowMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-green-400 hover:text-green-300 hover:bg-slate-700 transition-colors"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      Shopping Mode
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      onDelete(list);
+                      setShowMenu(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:text-red-300 hover:bg-slate-700 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Grid view
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: isPending ? 0.7 : 1, y: 0 }}
+      className="group relative h-full"
+    >
+      {/* Selection Overlay */}
+      {isSelected && (
+        <div className="absolute inset-0 bg-blue-500/20 border-2 border-blue-500 rounded-2xl z-10 pointer-events-none" />
+      )}
+
+      <div 
+        className={`bg-slate-800/50 backdrop-blur-sm border rounded-2xl p-6 hover:bg-slate-800/70 hover:border-slate-600 transition-all duration-300 hover:shadow-xl hover:shadow-black/20 relative h-full flex flex-col ${
+          isSelected ? 'border-blue-500' : 'border-slate-700/50'
+        } ${!selectionMode && onView ? 'cursor-pointer' : ''}`}
+        onClick={() => {
+          if (selectionMode) {
+            onSelect(!isSelected);
+          } else if (onView) {
+            onView(list);
+          }
+        }}
+      >
+        {/* Selection Checkbox */}
+        <div 
+          className="absolute top-4 right-4 z-20"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => onSelect(e.target.checked)}
+            className="w-4 h-4 text-blue-500 bg-transparent border-slate-400 rounded focus:ring-blue-500"
+          />
+        </div>
+
+        {/* Priority Indicator */}
+        {list.priority && (
+          <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${priorityColors[list.priority]} rounded-t-2xl`} />
+        )}
+
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="text-3xl">{typeIcons[list.list_type] || '📋'}</div>
+            <div>
+              {isEditing ? (
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onBlur={handleEdit}
+                  onKeyPress={(e) => e.key === 'Enter' && handleEdit()}
+                  className="bg-transparent border-b border-blue-500 text-white text-lg font-semibold focus:outline-none"
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <h3 className="text-lg font-semibold text-white mb-1">{list.name}</h3>
+              )}
+              <div className="flex items-center gap-2">
+                <p className="text-slate-400 text-sm capitalize">{list.list_type}</p>
+                {list.is_favorite && (
+                  <Star className="w-4 h-4 text-yellow-400" fill="currentColor" />
                 )}
               </div>
             </div>
           </div>
-          
-          <div className="flex flex-col sm:flex-row items-center gap-4 mt-4 sm:mt-0">
-            <div className="text-right">
-              <div className={`text-lg font-bold ${isCompleted ? 'text-green-400' : 'text-white'}`}>
-                {completionPercentage.toFixed(0)}%
-              </div>
-              <div className="w-20 h-2 bg-slate-700 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full transition-all duration-500 ${
-                    isCompleted ? 'bg-green-500' : 'bg-gradient-to-r from-cyan-500 to-blue-500'
-                  }`}
-                  style={{ width: `${completionPercentage}%` }}
-                />
-              </div>
-            </div>
-            
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-              <button
-                onClick={() => setIsEditing(true)}
-                className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
-                aria-label="Edit list name"
-              >
-                <Edit3 size={16} />
-              </button>
-              <button
-                onClick={() => onViewDetails(list)}
-                className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                aria-label="View list details"
-              >
-                <Eye size={16} />
-              </button>
-              <button
-                onClick={() => onDelete(list.id)}
-                className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                aria-label="Delete list"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  return (
-    <div 
-      className={`group bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl p-6 rounded-2xl border transition-all duration-300 hover:shadow-2xl animate-scale-in ${
-        isSelected 
-          ? 'border-cyan-500/50 shadow-cyan-500/20' 
-          : 'border-slate-700/50 hover:border-slate-600/50 hover:shadow-slate-900/50'
-      }`}
-      style={{animationDelay: `${0.1 * index}s`}}
-      role="article"
-      aria-label={`List: ${list.name}`}
-    >
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-4">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          {bulkMode && (
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={onSelect}
-              className="w-4 h-4 text-cyan-600 bg-slate-700 border-slate-600 rounded focus:ring-cyan-500"
-            />
-          )}
-          
-          <div className="p-3 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl">
-            <div className="text-2xl">{getTypeIcon(list.list_type)}</div>
-          </div>
-          
-          <div className="flex-1">
-            {isEditing ? (
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                onBlur={handleEdit}
-                onKeyDown={handleKeyPress}
-                className="bg-slate-700 text-white rounded px-2 py-1 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500 w-full"
-                autoFocus
-                aria-label="Edit list name"
-              />
-            ) : (
-              <button 
-                className={`text-lg font-bold mb-1 text-left hover:text-cyan-400 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/20 rounded ${
-                  isCompleted ? 'text-green-400' : 'text-white'
-                }`}
-                onClick={() => onViewDetails(list)}
-                aria-label={`View details for ${list.name}`}
-              >
-                {list.name}
-              </button>
+          {/* Actions Menu */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu(!showMenu);
+              }}
+              className="p-2 text-slate-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-30 min-w-[160px]">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onView(list);
+                    setShowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                >
+                  <Eye className="w-4 h-4" />
+                  View Items
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditing(true);
+                    setShowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  Edit Name
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(list);
+                    setShowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                >
+                  <Star className="w-4 h-4" />
+                  {list.is_favorite ? 'Remove Favorite' : 'Add Favorite'}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDuplicate(list);
+                    setShowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                >
+                  <Copy className="w-4 h-4" />
+                  Duplicate
+                </button>
+                {(list.list_type === 'shopping' || list.list_type === 'checklist') && onShoppingMode && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onShoppingMode(list);
+                      setShowMenu(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-green-400 hover:text-green-300 hover:bg-slate-700 transition-colors"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    Shopping Mode
+                  </button>
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(list);
+                    setShowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:text-red-300 hover:bg-slate-700 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              </div>
             )}
-            
-            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-400">
-              <span className="capitalize whitespace-nowrap">{list.list_type.replace('_', ' ')}</span>
-              <span className="hidden sm:inline">•</span>
-              <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${getPriorityColor(list.priority)}`}>
-                {list.priority}
-              </span>
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="flex-1">
+          <div className="h-12 mb-4">
+            {list.description && (
+              <p className="text-slate-400 text-sm line-clamp-2">{list.description}</p>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-400" />
+              <span className="text-white font-medium">{completedItems}</span>
+              <span className="text-slate-400 text-sm">completed</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-orange-400" />
+              <span className="text-white font-medium">{pendingItems}</span>
+              <span className="text-slate-400 text-sm">pending</span>
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="mb-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-slate-400 text-sm">Progress</span>
+              <span className="text-white font-medium">{progress.toFixed(0)}%</span>
+            </div>
+            <div className="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-blue-400 to-purple-500 transition-all duration-500 ease-out"
+                style={{ width: `${progress}%` }}
+              />
             </div>
           </div>
         </div>
-        
-        <div className="relative flex-shrink-0">
-          <button
-            onClick={() => setShowActions(!showActions)}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-slate-500/20"
-            aria-label="More actions"
-            aria-expanded={showActions}
-          >
-            <MoreHorizontal size={16} />
-          </button>
-          
-          {showActions && (
-            <div className="absolute right-0 top-10 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 min-w-40 animate-scale-in">
-              <button
-                onClick={() => {
-                  setIsEditing(true);
-                  setShowActions(false);
-                }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-left text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
-              >
-                <Edit3 size={14} />
-                Edit
-              </button>
-              <button
-                onClick={() => {
-                  onDuplicate(list);
-                  setShowActions(false);
-                }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-left text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
-              >
-                <Copy size={14} />
-                Duplicate
-              </button>
-              <hr className="border-slate-700 my-1" />
-              <button
-                onClick={() => {
-                  onDelete(list.id);
-                  setShowActions(false);
-                }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-left text-slate-300 hover:bg-red-500/20 hover:text-red-400 transition-colors"
-              >
-                <Trash2 size={14} />
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-        <div className="bg-slate-700/30 p-3 rounded-xl">
-          <div className="flex items-center gap-2 mb-1">
-            <Circle size={14} className="text-slate-400" />
-            <span className="text-xs text-slate-400">Total Items</span>
-          </div>
-          <div className="text-xl font-bold text-white">{list.items_count || 0}</div>
-        </div>
-        
-        <div className="bg-slate-700/30 p-3 rounded-xl">
-          <div className="flex items-center gap-2 mb-1">
-            <CheckCircle size={14} className="text-green-400" />
-            <span className="text-xs text-slate-400">Completed</span>
-          </div>
-          <div className="text-xl font-bold text-green-400">{list.completed_items_count || 0}</div>
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-slate-400">Progress</span>
-          <span className={`text-sm font-semibold ${isCompleted ? 'text-green-400' : 'text-white'}`}>
-            {completionPercentage.toFixed(0)}%
+        {/* Footer */}
+        <div className="flex items-center justify-between mt-auto">
+          <span className="text-slate-400 text-sm">
+            {new Date(list.updated_at || list.created_at).toLocaleDateString()}
           </span>
-        </div>
-        <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-          <div 
-            className={`h-full transition-all duration-500 ${
-              isCompleted 
-                ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
-                : 'bg-gradient-to-r from-cyan-500 to-blue-500'
-            }`}
-            style={{ width: `${completionPercentage}%` }}
-          />
+          {!selectionMode && onView && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onView(list);
+              }}
+              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white text-sm font-medium rounded-lg transition-all opacity-0 group-hover:opacity-100"
+            >
+              View Items
+            </button>
+          )}
         </div>
       </div>
-
-      {/* Footer */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-400">
-          {list.due_date && (
-            <div className="flex items-center gap-1 whitespace-nowrap">
-              <Calendar size={12} />
-              <span>{new Date(list.due_date).toLocaleDateString()}</span>
-            </div>
-          )}
-          {list.is_shared && (
-            <div className="flex items-center gap-1 whitespace-nowrap">
-              <Users size={12} />
-              <span>Shared</span>
-            </div>
-          )}
-          <span className="whitespace-nowrap">Updated {new Date(list.updated_at).toLocaleDateString()}</span>
-        </div>
-        
-        <button
-          onClick={() => onViewDetails(list)}
-          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg hover:shadow-cyan-500/25 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 whitespace-nowrap"
-          aria-label={`View details for ${list.name}`}
-        >
-          <Eye size={14} />
-          View
-        </button>
-      </div>
-      
-      {/* Click outside to close actions */}
-      {showActions && (
-        <div 
-          className="fixed inset-0 z-0" 
-          onClick={() => setShowActions(false)}
-        />
-      )}
-    </div>
+    </motion.div>
   );
 };
 

@@ -215,6 +215,48 @@ class ExpenseService:
         
         else:
             raise ValidationError(f'Invalid operation: {operation}')
+    
+    @staticmethod
+    def get_expense_summary(user: User) -> Dict:
+        """Get expense summary data"""
+        today = timezone.now().date()
+        start_of_week = today - timedelta(days=today.weekday())
+        
+        today_sum = Expense.objects.filter(
+            user=user, transaction_date=today
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        week_sum = Expense.objects.filter(
+            user=user, transaction_date__gte=start_of_week
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        month_sum = Expense.objects.filter(
+            user=user, transaction_date__year=today.year, transaction_date__month=today.month
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        current_budget_amount = 0
+        try:
+            budget = Budget.objects.get(
+                user=user, is_active=True, start_date__lte=today, end_date__gte=today
+            )
+            current_budget_amount = budget.amount
+        except (Budget.DoesNotExist, Budget.MultipleObjectsReturned):
+            pass
+        
+        expenses = Expense.objects.filter(user=user)
+        return {
+            'today': float(today_sum),
+            'week': float(week_sum),
+            'month': float(month_sum),
+            'current_budget': float(current_budget_amount),
+            'total_expenses': expenses.count(),
+            'total_amount': sum(float(expense.amount) for expense in expenses),
+            'categories': list(expenses.values_list('category', flat=True).distinct()),
+            'date_range': {
+                'earliest': expenses.order_by('transaction_date').first().transaction_date if expenses.exists() else None,
+                'latest': expenses.order_by('-transaction_date').first().transaction_date if expenses.exists() else None
+            }
+        }
 
 
 class AIExpenseParser:
@@ -286,3 +328,264 @@ class AIExpenseParser:
         **User's Text:** "{text}"
         **Your JSON Response:**
         """
+
+
+class ExpenseAdvancedService:
+    """Service for advanced expense operations"""
+    
+    @staticmethod
+    def get_comprehensive_analytics(user: User, period: str = 'month') -> Dict:
+        """Get comprehensive expense analytics"""
+        today = timezone.now().date()
+        if period == 'month':
+            start_date = today - timedelta(days=30)
+        elif period == 'quarter':
+            start_date = today - timedelta(days=90)
+        else:
+            start_date = today - timedelta(days=365)
+        
+        expenses = Expense.objects.filter(
+            user=user, transaction_date__gte=start_date, transaction_date__lte=today
+        )
+        
+        total_amount = expenses.aggregate(Sum('amount'))['amount__sum'] or 0
+        avg_amount = expenses.aggregate(Avg('amount'))['amount__avg'] or 0
+        expense_count = expenses.count()
+        days_in_period = max((today - start_date).days, 1)
+
+        weekend_total = weekday_total = 0
+        by_day_of_week = {}
+
+        for expense in expenses:
+            day_name = expense.transaction_date.strftime('%A')
+            by_day_of_week[day_name] = by_day_of_week.get(day_name, 0) + float(expense.amount)
+            
+            if expense.transaction_date.weekday() >= 5:
+                weekend_total += float(expense.amount)
+            else:
+                weekday_total += float(expense.amount)
+
+        high_value_transactions = [
+            {
+                'id': t.expense_id,
+                'description': t.description or t.vendor or t.category,
+                'amount': float(t.amount)
+            } for t in expenses.order_by('-amount')[:3]
+        ]
+        
+        category_stats = expenses.values('category').annotate(
+            total=Sum('amount'), count=Count('expense_id')
+        ).order_by('-total')
+        
+        payment_stats = expenses.values('payment_method').annotate(
+            total=Sum('amount'), count=Count('expense_id')
+        ).order_by('-total')
+
+        return {
+            'summary': {
+                'total_amount': float(total_amount),
+                'average_amount': float(avg_amount),
+                'expense_count': expense_count,
+                'daily_average': float(total_amount / days_in_period)
+            },
+            'category_insights': {
+                'category_breakdown': [
+                    {
+                        'category': item['category'],
+                        'total': float(item['total']),
+                        'count': item['count']
+                    } for item in category_stats
+                ]
+            },
+            'payment_method_breakdown': [
+                {
+                    'payment_method': item['payment_method'] or 'cash',
+                    'total': float(item['total']),
+                    'count': item['count']
+                } for item in payment_stats
+            ],
+            'spending_patterns': {
+                'by_day_of_week': by_day_of_week,
+                'weekend_vs_weekday': {
+                    'weekday': weekday_total,
+                    'weekend': weekend_total
+                }
+            },
+            'high_value_transactions': high_value_transactions
+        }
+    
+    @staticmethod
+    def get_spending_trends(user: User, months: int = 6) -> Dict:
+        """Get spending trends"""
+        end_date = timezone.now().date()
+        monthly_trends = []
+        
+        for i in range(months):
+            month_start = end_date.replace(day=1) - timedelta(days=i * 30)
+            month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            
+            month_expenses = Expense.objects.filter(
+                user=user, transaction_date__gte=month_start, transaction_date__lte=month_end
+            )
+            
+            total = month_expenses.aggregate(Sum('amount'))['amount__sum'] or 0
+            count = month_expenses.count()
+            avg = month_expenses.aggregate(Avg('amount'))['amount__avg'] or 0
+            
+            monthly_trends.append({
+                'month': month_start.strftime('%Y-%m'),
+                'total': float(total),
+                'count': count,
+                'average': float(avg)
+            })
+        
+        return {'monthly_trends': list(reversed(monthly_trends))}
+    
+    @staticmethod
+    def get_budget_analysis(user: User) -> Dict:
+        """Get budget analysis"""
+        current_month = timezone.now().date().replace(day=1)
+        next_month = (current_month + timedelta(days=32)).replace(day=1)
+        
+        logger.info(f"Budget analysis for user {user.username}, period: {current_month} to {next_month}")
+        
+        # Get current month expenses
+        month_expenses = Expense.objects.filter(
+            user=user, 
+            transaction_date__gte=current_month,
+            transaction_date__lt=next_month
+        )
+        
+        logger.info(f"Found {month_expenses.count()} expenses for current month")
+        
+        # Get active budgets for current period
+        active_budgets = Budget.objects.filter(
+            user=user,
+            is_active=True,
+            start_date__lte=current_month,
+            end_date__gte=current_month
+        )
+        
+        logger.info(f"Found {active_budgets.count()} active budgets")
+        
+        budget_analysis = []
+        for budget in active_budgets:
+            # Calculate spent amount for this category
+            spent_amount = month_expenses.filter(
+                category=budget.category
+            ).aggregate(Sum('amount'))['amount__sum'] or 0
+            
+            remaining_amount = budget.amount - spent_amount
+            utilization_percentage = (spent_amount / budget.amount * 100) if budget.amount > 0 else 0
+            
+            logger.info(f"Budget {budget.category}: spent={spent_amount}, budget={budget.amount}, utilization={utilization_percentage}%")
+            
+            budget_analysis.append({
+                'category': budget.category,
+                'budget_amount': float(budget.amount),
+                'spent_amount': float(spent_amount),
+                'remaining_amount': float(remaining_amount),
+                'utilization_percentage': float(utilization_percentage),
+                'status': 'over_budget' if spent_amount > budget.amount else 'within_budget'
+            })
+        
+        total_budgeted = sum([float(budget.amount) for budget in active_budgets])
+        total_spent = float(month_expenses.aggregate(Sum('amount'))['amount__sum'] or 0)
+        
+        result = {
+            'budget_analysis': budget_analysis,
+            'current_month': current_month.strftime('%Y-%m'),
+            'total_budgeted': total_budgeted,
+            'total_spent': total_spent,
+            'overall_utilization': (total_spent / total_budgeted * 100) if total_budgeted > 0 else 0,
+            'message': 'No active budgets found for current month. Create budgets to see analysis.' if not budget_analysis else None
+        }
+        
+        logger.info(f"Budget analysis result: {result}")
+        return result
+    
+    @staticmethod
+    def bulk_categorize_expenses(user: User, expense_ids: List[str], new_category: str) -> Dict:
+        """Bulk categorize expenses"""
+        updated_count = Expense.objects.filter(
+            user=user, expense_id__in=expense_ids
+        ).update(category=new_category)
+        
+        return {'updated_count': updated_count, 'category': new_category}
+    
+    @staticmethod
+    def duplicate_expense(user: User, expense_id: str) -> Dict:
+        """Duplicate an expense"""
+        original_expense = Expense.objects.get(expense_id=expense_id, user=user)
+        
+        original_expense.pk = None
+        original_expense.expense_id = None
+        original_expense.display_id = None
+        original_expense.transaction_date = timezone.now().date()
+        original_expense.save()
+        
+        return {
+            'message': 'Expense duplicated successfully',
+            'new_expense_id': original_expense.expense_id
+        }
+    
+    @staticmethod
+    def search_expenses(user: User, search_params: Dict) -> Dict:
+        """Advanced expense search"""
+        expenses = Expense.objects.filter(user=user)
+        
+        if search_params.get('q'):
+            expenses = expenses.filter(
+                Q(description__icontains=search_params['q']) |
+                Q(vendor__icontains=search_params['q']) |
+                Q(raw_text__icontains=search_params['q']) |
+                Q(notes__icontains=search_params['q'])
+            )
+        
+        for field in ['category', 'payment_method']:
+            if search_params.get(field):
+                expenses = expenses.filter(**{field: search_params[field]})
+        
+        if search_params.get('vendor'):
+            expenses = expenses.filter(vendor__icontains=search_params['vendor'])
+        
+        if search_params.get('min_amount'):
+            expenses = expenses.filter(amount__gte=search_params['min_amount'])
+        
+        if search_params.get('max_amount'):
+            expenses = expenses.filter(amount__lte=search_params['max_amount'])
+        
+        if search_params.get('start_date'):
+            expenses = expenses.filter(transaction_date__gte=search_params['start_date'])
+        
+        if search_params.get('end_date'):
+            expenses = expenses.filter(transaction_date__lte=search_params['end_date'])
+        
+        from .serializers import ExpenseSerializer
+        serializer = ExpenseSerializer(expenses[:100], many=True)
+        
+        return {'results': serializer.data, 'total_count': expenses.count()}
+
+
+class ExpenseCategoryService:
+    """Service for expense category operations"""
+    
+    @staticmethod
+    def get_user_categories(user: User):
+        return ExpenseCategory.objects.filter(user=user)
+    
+    @staticmethod
+    def create_category(user: User, category_data: Dict):
+        return ExpenseCategory.objects.create(user=user, **category_data)
+
+
+class ExpenseTagService:
+    """Service for expense tag operations"""
+    
+    @staticmethod
+    def get_user_tags(user: User):
+        return ExpenseTag.objects.filter(user=user)
+    
+    @staticmethod
+    def create_tag(user: User, tag_data: Dict):
+        return ExpenseTag.objects.create(user=user, **tag_data)
