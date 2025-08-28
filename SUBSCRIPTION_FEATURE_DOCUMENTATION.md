@@ -130,10 +130,12 @@ def yearly_cost(self):
 - Real-time data updates
 
 **2. CreateSubscriptionModal.jsx**
-- Form for adding new subscriptions
+- **Dual Creation Modes**: Manual form and AI-powered input
+- **Manual Mode**: Traditional form with all fields
+- **AI Mode**: Natural language input ("Netflix 15.99 monthly UPI")
 - Validation and error handling
 - Gradient UI with animations
-- Support for all subscription fields
+- Support for all subscription fields including UPI payment method
 
 **3. EditSubscriptionModal.jsx**
 - Edit existing subscriptions
@@ -175,12 +177,20 @@ def yearly_cost(self):
 **10. AlertsPanel.jsx**
 - Comprehensive alerts management
 - Filtering and sorting capabilities
-- Bulk alert operations
+- **Dual Alert Actions**: Dismiss (hide) and Delete (permanent)
+- Confirmation dialogs for permanent deletion
+- Real-time alert updates
 
 **11. CategoryManagementModal.jsx**
 - Full category CRUD operations
 - Color and icon customization
 - Real-time category updates
+
+**12. SmartSubscriptionInput.jsx**
+- AI-powered natural language input component
+- Real-time parsing suggestions
+- Example prompts and guidance
+- Integration with NLP parser API
 
 ### Hooks (`frontend/src/hooks/useSubscriptions.js`)
 
@@ -241,6 +251,7 @@ POST   /subscriptions/{id}/add_usage/     # Add usage record
 POST   /subscriptions/{id}/pause/         # Pause subscription
 POST   /subscriptions/{id}/resume/        # Resume subscription
 POST   /subscriptions/{id}/cancel/        # Cancel subscription
+POST   /subscriptions/parse_nlp/          # Parse natural language input
 ```
 
 #### Categories
@@ -257,7 +268,8 @@ DELETE /categories/{id}/                  # Delete category
 GET    /alerts/                          # List alerts
 GET    /alerts/unread/                   # Get unread alerts
 POST   /alerts/{id}/mark_read/           # Mark as read
-POST   /alerts/{id}/dismiss/             # Dismiss alert
+POST   /alerts/{id}/dismiss/             # Dismiss alert (hide from list)
+DELETE /alerts/{id}/delete_alert/        # Permanently delete alert
 ```
 
 ---
@@ -281,7 +293,7 @@ CREATE TABLE subscriptions_subscription (
     next_billing_date DATE NOT NULL,
     end_date DATE,
     status VARCHAR(20) DEFAULT 'active',
-    payment_method VARCHAR(20) NOT NULL,
+    payment_method VARCHAR(20) NOT NULL CHECK (payment_method IN ('card', 'bank_transfer', 'upi', 'paypal', 'other')),
     auto_renewal BOOLEAN DEFAULT TRUE,
     reminder_days INTEGER DEFAULT 3,
     email_notifications BOOLEAN DEFAULT TRUE,
@@ -305,6 +317,18 @@ CREATE TABLE subscriptions_subscription (
 ## AI Features
 
 ### Google Gemini Integration
+
+#### Natural Language Processing (NLP)
+```python
+class SubscriptionNLPParser:
+    """Parse natural language subscription descriptions"""
+    
+    def parse_subscription_query(self, query):
+        """Parse queries like 'Netflix 15.99 monthly UPI'"""
+        # AI parsing with Gemini API
+        # Fallback regex parsing
+        # Returns structured subscription data
+```
 
 #### AI Insights Generation
 ```python
@@ -336,6 +360,8 @@ def generate_insights(self):
 ## Usage Examples
 
 ### Creating a Subscription
+
+#### Manual Creation
 ```javascript
 const subscriptionData = {
   name: 'Netflix',
@@ -344,12 +370,25 @@ const subscriptionData = {
   billing_cycle: 'monthly',
   start_date: '2024-01-01',
   next_billing_date: '2024-02-01',
-  payment_method: 'card',
+  payment_method: 'upi',  // Now supports UPI
   description: 'Streaming service'
 };
 
 const { createSubscription } = useSubscriptions();
 await createSubscription(subscriptionData);
+```
+
+#### AI-Powered Creation
+```javascript
+// Parse natural language input
+const parseResponse = await apiClient.post('/subscriptions/subscriptions/parse_nlp/', {
+  query: 'Netflix 15.99 monthly starting today UPI'
+});
+
+// Create subscription with parsed data
+if (parseResponse.data.success) {
+  await createSubscription(parseResponse.data.parsed_data);
+}
 ```
 
 ### Getting Dashboard Data
@@ -419,21 +458,24 @@ test('creates subscription successfully', async () => {
 
 ### ✅ Core Functionality
 - ✅ CRUD operations for subscriptions
-- ✅ Category management
-- ✅ Payment tracking
+- ✅ **Dual Creation Modes**: Manual form and AI-powered natural language input
+- ✅ Category management with color/icon customization
+- ✅ Payment tracking with UPI support
 - ✅ Usage monitoring
 - ✅ Status management (active/paused/cancelled)
-- ✅ Alert system with notifications
+- ✅ **Enhanced Alert System**: Dismiss vs Delete with confirmation dialogs
 
 ### ✅ Advanced Features
-- ✅ AI-powered insights with Google Gemini
+- ✅ **AI-powered insights** with Google Gemini
+- ✅ **Natural Language Processing** for subscription creation
+- ✅ **Smart Input Parsing**: "Jio 200 monthly UPI" → structured data
 - ✅ Cost optimization suggestions
 - ✅ Duplicate service detection
 - ✅ Advanced filtering and sorting
 - ✅ Bulk operations
 - ✅ Real-time analytics
-- ✅ Notification system with bell icon
-- ✅ Responsive design
+- ✅ **Enhanced Notification System** with bell icon and alerts panel
+- ✅ Responsive design with gradient UI
 
 ### ✅ User Experience
 - ✅ Intuitive dashboard

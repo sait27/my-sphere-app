@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, AlertTriangle, Calendar, DollarSign, TrendingUp, Check, X, Filter } from 'lucide-react';
+import { Bell, AlertTriangle, Calendar, DollarSign, TrendingUp, Check, X, Filter, Trash2 } from 'lucide-react';
 import { useAlerts } from '../../hooks/useAlerts';
 import apiClient from '../../api/axiosConfig';
 import toast from 'react-hot-toast';
 
 const AlertsPanel = () => {
-  const { markAsRead, dismissAlert } = useAlerts();
+  const { markAsRead, dismissAlert, deleteAlert } = useAlerts();
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // 'all', 'unread', 'read'
@@ -40,6 +40,17 @@ const AlertsPanel = () => {
       await fetchAlerts();
     } catch (error) {
       console.error('Failed to dismiss alert:', error);
+    }
+  };
+
+  const handleDelete = async (alertId) => {
+    if (window.confirm('Are you sure you want to permanently delete this alert?')) {
+      try {
+        await deleteAlert(alertId);
+        await fetchAlerts();
+      } catch (error) {
+        console.error('Failed to delete alert:', error);
+      }
     }
   };
 
@@ -158,10 +169,17 @@ const AlertsPanel = () => {
                       )}
                       <button
                         onClick={() => handleDismiss(alert.id)}
-                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/20 rounded-lg transition-all duration-200"
+                        className="p-2 text-slate-400 hover:text-yellow-400 hover:bg-yellow-500/20 rounded-lg transition-all duration-200"
                         title="Dismiss"
                       >
                         <X className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(alert.id)}
+                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/20 rounded-lg transition-all duration-200"
+                        title="Delete permanently"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>

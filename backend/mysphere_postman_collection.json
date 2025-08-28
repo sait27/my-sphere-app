@@ -516,6 +516,18 @@
                   {"key": "Authorization", "value": "Bearer {{token}}"}
                 ]
               }
+            },
+            {
+              "name": "Parse NLP Query",
+              "request": {
+                "method": "POST",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/parse_nlp/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions", "parse_nlp"]},
+                "body": {"mode": "raw", "raw": "{\n  \"query\": \"Netflix 15.99 monthly starting today\"\n}"},
+                "header": [
+                  {"key": "Content-Type", "value": "application/json"},
+                  {"key": "Authorization", "value": "Bearer {{token}}"}
+                ]
+              }
             }
           ]
         },

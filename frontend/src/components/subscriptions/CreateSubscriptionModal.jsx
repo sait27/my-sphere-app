@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Wand2, Edit3 } from 'lucide-react';
 import { useSubscriptions } from '../../hooks/useSubscriptions';
+import SmartSubscriptionInput from './SmartSubscriptionInput';
 import apiClient from '../../api/axiosConfig';
+import { toast } from 'react-hot-toast';
 
 const CreateSubscriptionModal = ({ onClose, onSuccess }) => {
   const { createSubscription, loading } = useSubscriptions();
+  const [mode, setMode] = useState('manual'); // 'manual' or 'ai'
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -17,6 +20,8 @@ const CreateSubscriptionModal = ({ onClose, onSuccess }) => {
     description: '',
     category: '',
   });
+  const [aiInput, setAiInput] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     fetchCategories();
@@ -31,13 +36,56 @@ const CreateSubscriptionModal = ({ onClose, onSuccess }) => {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleManualSubmit = async (e) => {
     e.preventDefault();
     try {
       await createSubscription(formData);
       onSuccess();
     } catch (error) {
       console.error('Failed to create subscription:', error);
+    }
+  };
+
+  const handleAiSubmit = async (e) => {
+    e.preventDefault();
+    if (!aiInput.trim()) {
+      toast.error('Please enter subscription details');
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      // Parse with AI
+      const parseResponse = await apiClient.post('/subscriptions/subscriptions/parse_nlp/', {
+        query: aiInput
+      });
+
+      console.log('Parse response:', parseResponse.data);
+
+      if (parseResponse.data.success && parseResponse.data.parsed_data) {
+        const parsedData = parseResponse.data.parsed_data;
+        
+        // Validate required fields
+        const requiredFields = ['name', 'provider', 'amount', 'billing_cycle', 'start_date', 'next_billing_date', 'payment_method'];
+        const missingFields = requiredFields.filter(field => !parsedData[field]);
+        
+        if (missingFields.length > 0) {
+          toast.error(`Missing information: ${missingFields.join(', ')}. Please provide more details.`);
+          return;
+        }
+
+        // Create subscription with parsed data
+        await createSubscription(parsedData);
+        toast.success('Subscription created successfully!');
+        onSuccess();
+      } else {
+        toast.error(parseResponse.data.error || 'Failed to parse subscription details');
+      }
+    } catch (error) {
+      console.error('Failed to create subscription with AI:', error);
+      toast.error('Failed to create subscription');
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -63,7 +111,99 @@ const CreateSubscriptionModal = ({ onClose, onSuccess }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Mode Selection */}
+        <div className="flex gap-2 mb-6 p-1 bg-slate-800/50 rounded-xl">
+          <button
+            onClick={() => setMode('manual')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+              mode === 'manual'
+                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+            }`}
+          >
+            <Edit3 className="w-4 h-4" />
+            Manual
+          </button>
+          <button
+            onClick={() => setMode('ai')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+              mode === 'ai'
+                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+            }`}
+          >
+            <Wand2 className="w-4 h-4" />
+            AI Assistant
+          </button>
+        </div>
+
+        {mode === 'ai' ? (
+          /* AI Mode */
+          <form onSubmit={handleAiSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Describe your subscription
+              </label>
+              <div className="relative">
+                <textarea
+                  value={aiInput}
+                  onChange={(e) => setAiInput(e.target.value)}
+                  placeholder="e.g., Jio 200 monthly starting today next billing next month UPI, Netflix 15.99 monthly paid by card"
+                  rows={4}
+                  className="w-full p-4 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-200 resize-none"
+                />
+                <div className="absolute bottom-3 right-3">
+                  <Wand2 className="w-5 h-5 text-purple-400" />
+                </div>
+              </div>
+              
+              {/* Required Fields Info */}
+              <div className="mt-3 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                <p className="text-xs font-medium text-purple-300 mb-2">📋 Required Information:</p>
+                <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
+                  <div>• Service name (Netflix, Spotify)</div>
+                  <div>• Amount (15.99, $9.99)</div>
+                  <div>• Billing cycle (monthly, yearly)</div>
+                  <div>• Start date (today, Jan 1)</div>
+                  <div>• Next billing date</div>
+                  <div>• Payment method (card, UPI)</div>
+                </div>
+                <p className="text-xs text-purple-300 mt-2">
+                  💡 Include all details for best results: "Netflix 15.99 monthly starting today, next billing Jan 15, paid by card"
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button 
+                type="submit" 
+                disabled={aiLoading || !aiInput.trim()}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-slate-600 disabled:to-slate-600 text-white font-semibold rounded-xl transition-all duration-200 transform hover:scale-[1.02] disabled:hover:scale-100 flex items-center justify-center gap-2"
+              >
+                {aiLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Creating with AI...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-4 h-4" />
+                    Create with AI
+                  </>
+                )}
+              </button>
+              <button 
+                type="button" 
+                onClick={onClose}
+                className="px-4 py-3 bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white font-semibold rounded-xl transition-all duration-200 border border-slate-600/50"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* Manual Mode */
+          <form onSubmit={handleManualSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Name *</label>
             <input
@@ -122,22 +262,24 @@ const CreateSubscriptionModal = ({ onClose, onSuccess }) => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Start Date</label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Start Date *</label>
               <input
                 type="date"
                 name="start_date"
                 value={formData.start_date}
                 onChange={handleChange}
+                required
                 className="w-full p-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all duration-200"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Next Billing</label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Next Billing *</label>
               <input
                 type="date"
                 name="next_billing_date"
                 value={formData.next_billing_date}
                 onChange={handleChange}
+                required
                 className="w-full p-3 bg-slate-700/50 border border-slate-600/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50 transition-all duration-200"
               />
             </div>
@@ -154,6 +296,7 @@ const CreateSubscriptionModal = ({ onClose, onSuccess }) => {
               >
                 <option value="card">Credit/Debit Card</option>
                 <option value="bank_transfer">Bank Transfer</option>
+                <option value="upi">UPI</option>
                 <option value="paypal">PayPal</option>
                 <option value="other">Other</option>
               </select>
@@ -200,7 +343,10 @@ const CreateSubscriptionModal = ({ onClose, onSuccess }) => {
                   Creating...
                 </>
               ) : (
-                'Create Subscription'
+                <>
+                  <Edit3 className="w-4 h-4" />
+                  Create Subscription
+                </>
               )}
             </button>
             <button 
@@ -212,6 +358,7 @@ const CreateSubscriptionModal = ({ onClose, onSuccess }) => {
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

@@ -38,10 +38,28 @@ export const useAlerts = () => {
       setLoading(false);
     }
   }, []);
+  
+  const deleteAlert = useCallback(async (alertId) => {
+    setLoading(true);
+    try {
+      await retryOperation(() => 
+        apiClient.delete(`/subscriptions/alerts/${alertId}/delete_alert/`)
+      );
+      toast.success('Alert deleted permanently');
+      return true;
+    } catch (error) {
+      const errorMessage = handleApiError(error, 'Failed to delete alert');
+      toast.error(errorMessage);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   return {
     loading,
     markAsRead,
-    dismissAlert
+    dismissAlert,
+    deleteAlert
   };
 };

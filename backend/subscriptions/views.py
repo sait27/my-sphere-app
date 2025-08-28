@@ -11,6 +11,7 @@ from .serializers import (
     SubscriptionPaymentSerializer, SubscriptionUsageSerializer, SubscriptionAlertSerializer
 )
 from .ai_insights import SubscriptionAIEngine, SubscriptionOptimizer
+from .nlp_parser import SubscriptionNLPParser
 
 class SubscriptionCategoryViewSet(viewsets.ModelViewSet):
     serializer_class = SubscriptionCategorySerializer
@@ -201,13 +202,37 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         subscription.end_date = timezone.now().date()
         subscription.save()
         return Response({'message': 'Subscription cancelled successfully'})
+    
+    @action(detail=False, methods=['post'])
+    def parse_nlp(self, request):
+        """Parse natural language subscription description"""
+        query = request.data.get('query', '')
+        
+        if not query.strip():
+            return Response(
+                {'error': 'Query is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            parser = SubscriptionNLPParser()
+            result = parser.parse_subscription_query(query)
+            return Response(result)
+        except Exception as e:
+            return Response(
+                {'error': 'Failed to parse query', 'details': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class SubscriptionAlertViewSet(viewsets.ModelViewSet):
     serializer_class = SubscriptionAlertSerializer
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        return SubscriptionAlert.objects.filter(subscription__user=self.request.user)
+        return SubscriptionAlert.objects.filter(
+            subscription__user=self.request.user,
+            is_dismissed=False
+        )
     
     @action(detail=False, methods=['get'])
     def unread(self, request):
@@ -231,3 +256,10 @@ class SubscriptionAlertViewSet(viewsets.ModelViewSet):
         alert.is_dismissed = True
         alert.save()
         return Response({'message': 'Alert dismissed'})
+    
+    @action(detail=True, methods=['delete'])
+    def delete_alert(self, request, pk=None):
+        """Permanently delete alert"""
+        alert = self.get_object()
+        alert.delete()
+        return Response({'message': 'Alert deleted permanently'})

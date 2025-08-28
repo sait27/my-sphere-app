@@ -41,6 +41,7 @@ class Subscription(models.Model):
     PAYMENT_METHODS = [
         ('card', 'Credit/Debit Card'),
         ('bank_transfer', 'Bank Transfer'),
+        ('upi', 'UPI'),
         ('paypal', 'PayPal'),
         ('other', 'Other'),
     ]

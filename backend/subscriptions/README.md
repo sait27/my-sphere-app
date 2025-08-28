@@ -32,6 +32,7 @@ subscriptions/
 ├── urls.py                # URL routing configuration
 ├── admin.py               # Django admin interface
 ├── ai_insights.py         # AI-powered analytics engine
+├── nlp_parser.py          # Natural language subscription parsing
 ├── apps.py                # App configuration
 ├── tests.py               # Unit and integration tests
 ├── management/
