@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'budgets',
     'lists',
     'todos',
+    'subscriptions',
     'rest_framework',
     'drf_spectacular',
     'integrations',

@@ -372,6 +372,236 @@
           }
         }
       ]
+    },
+    {
+      "name": "Subscriptions",
+      "item": [
+        {
+          "name": "Subscription Management",
+          "item": [
+            {
+              "name": "List Subscriptions",
+              "request": {
+                "method": "GET",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Create Subscription",
+              "request": {
+                "method": "POST",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions"]},
+                "body": {"mode": "raw", "raw": "{\n  \"name\": \"Netflix\",\n  \"provider\": \"Netflix Inc.\",\n  \"amount\": \"15.99\",\n  \"billing_cycle\": \"monthly\",\n  \"start_date\": \"2024-01-01\",\n  \"next_billing_date\": \"2024-02-01\",\n  \"payment_method\": \"card\",\n  \"description\": \"Streaming service\"\n}"},
+                "header": [
+                  {"key": "Content-Type", "value": "application/json"},
+                  {"key": "Authorization", "value": "Bearer {{token}}"}
+                ]
+              }
+            },
+            {
+              "name": "Get Subscription",
+              "request": {
+                "method": "GET",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/:subscription_id/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions", ":subscription_id"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Update Subscription",
+              "request": {
+                "method": "PATCH",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/:subscription_id/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions", ":subscription_id"]},
+                "body": {"mode": "raw", "raw": "{\n  \"amount\": \"17.99\",\n  \"status\": \"active\"\n}"},
+                "header": [
+                  {"key": "Content-Type", "value": "application/json"},
+                  {"key": "Authorization", "value": "Bearer {{token}}"}
+                ]
+              }
+            },
+            {
+              "name": "Delete Subscription",
+              "request": {
+                "method": "DELETE",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/:subscription_id/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions", ":subscription_id"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard & Analytics",
+          "item": [
+            {
+              "name": "Dashboard Data",
+              "request": {
+                "method": "GET",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/dashboard/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions", "dashboard"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Analytics",
+              "request": {
+                "method": "GET",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/analytics/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions", "analytics"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "AI Insights",
+              "request": {
+                "method": "GET",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/ai_insights/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions", "ai_insights"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Optimization Suggestions",
+              "request": {
+                "method": "GET",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/optimization/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions", "optimization"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Subscription Actions",
+          "item": [
+            {
+              "name": "Pause Subscription",
+              "request": {
+                "method": "POST",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/:subscription_id/pause/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions", ":subscription_id", "pause"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Resume Subscription",
+              "request": {
+                "method": "POST",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/:subscription_id/resume/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions", ":subscription_id", "resume"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Cancel Subscription",
+              "request": {
+                "method": "POST",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/:subscription_id/cancel/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions", ":subscription_id", "cancel"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Add Payment",
+              "request": {
+                "method": "POST",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/:subscription_id/add_payment/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions", ":subscription_id", "add_payment"]},
+                "body": {"mode": "raw", "raw": "{\n  \"amount\": \"15.99\",\n  \"payment_date\": \"2024-01-01\",\n  \"due_date\": \"2024-01-01\",\n  \"status\": \"paid\",\n  \"transaction_id\": \"TXN123456\"\n}"},
+                "header": [
+                  {"key": "Content-Type", "value": "application/json"},
+                  {"key": "Authorization", "value": "Bearer {{token}}"}
+                ]
+              }
+            },
+            {
+              "name": "Add Usage",
+              "request": {
+                "method": "POST",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/subscriptions/:subscription_id/add_usage/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "subscriptions", ":subscription_id", "add_usage"]},
+                "body": {"mode": "raw", "raw": "{\n  \"usage_date\": \"2024-01-01\",\n  \"usage_count\": 5,\n  \"usage_value\": \"2.5\",\n  \"notes\": \"Daily usage tracking\"\n}"},
+                "header": [
+                  {"key": "Content-Type", "value": "application/json"},
+                  {"key": "Authorization", "value": "Bearer {{token}}"}
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Categories",
+          "item": [
+            {
+              "name": "List Categories",
+              "request": {
+                "method": "GET",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/categories/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "categories"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Create Category",
+              "request": {
+                "method": "POST",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/categories/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "categories"]},
+                "body": {"mode": "raw", "raw": "{\n  \"name\": \"Entertainment\",\n  \"color\": \"#FF6B6B\",\n  \"icon\": \"play\"\n}"},
+                "header": [
+                  {"key": "Content-Type", "value": "application/json"},
+                  {"key": "Authorization", "value": "Bearer {{token}}"}
+                ]
+              }
+            },
+            {
+              "name": "Update Category",
+              "request": {
+                "method": "PATCH",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/categories/:category_id/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "categories", ":category_id"]},
+                "body": {"mode": "raw", "raw": "{\n  \"name\": \"Streaming Services\",\n  \"color\": \"#4ECDC4\"\n}"},
+                "header": [
+                  {"key": "Content-Type", "value": "application/json"},
+                  {"key": "Authorization", "value": "Bearer {{token}}"}
+                ]
+              }
+            },
+            {
+              "name": "Delete Category",
+              "request": {
+                "method": "DELETE",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/categories/:category_id/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "categories", ":category_id"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alerts",
+          "item": [
+            {
+              "name": "List Alerts",
+              "request": {
+                "method": "GET",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/alerts/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "alerts"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Unread Alerts",
+              "request": {
+                "method": "GET",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/alerts/unread/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "alerts", "unread"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Mark Alert as Read",
+              "request": {
+                "method": "POST",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/alerts/:alert_id/mark_read/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "alerts", ":alert_id", "mark_read"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            },
+            {
+              "name": "Dismiss Alert",
+              "request": {
+                "method": "POST",
+                "url": {"raw": "{{base_url}}/api/v1/subscriptions/alerts/:alert_id/dismiss/", "host": ["{{base_url}}"], "path": ["api", "v1", "subscriptions", "alerts", ":alert_id", "dismiss"]},
+                "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }
