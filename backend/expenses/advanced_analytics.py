@@ -19,24 +19,46 @@ class AdvancedExpenseAnalytics:
 
     def get_comprehensive_analytics(self, period='month'):
         """Get comprehensive analytics including predictions and trends"""
-        now = timezone.now()
+        today = timezone.now().date()
 
         if period == 'week':
-            start_date = now - timedelta(days=7)
+            # Current week (Monday to Sunday)
+            start_date = today - timedelta(days=today.weekday())
+            end_date = start_date + timedelta(days=6)
         elif period == 'month':
-            start_date = now - timedelta(days=30)
+            # Current month only
+            start_date = today.replace(day=1)
+            next_month = (start_date + timedelta(days=32)).replace(day=1)
+            end_date = next_month - timedelta(days=1)
         elif period == 'quarter':
-            start_date = now - timedelta(days=90)
-        else:  # year
-            start_date = now - timedelta(days=365)
+            # Current quarter only
+            quarter = (today.month - 1) // 3 + 1
+            start_date = today.replace(month=(quarter - 1) * 3 + 1, day=1)
+            end_month = quarter * 3
+            if end_month > 12:
+                end_date = today.replace(year=today.year + 1, month=end_month - 12, day=1) - timedelta(days=1)
+            else:
+                end_date = (today.replace(month=end_month, day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        elif period == 'year':
+            # Current year only
+            start_date = today.replace(month=1, day=1)
+            end_date = today.replace(month=12, day=31)
+        else:
+            # Default to current month
+            start_date = today.replace(day=1)
+            next_month = (start_date + timedelta(days=32)).replace(day=1)
+            end_date = next_month - timedelta(days=1)
 
-        period_expenses = self.expenses.filter(transaction_date__gte=start_date)
+        period_expenses = self.expenses.filter(
+            transaction_date__gte=start_date,
+            transaction_date__lte=end_date
+        )
 
         # Calculate the summary statistics first
         total_amount = float(period_expenses.aggregate(Sum('amount'))['amount__sum'] or 0)
         expense_count = period_expenses.count()
         average_amount = float(period_expenses.aggregate(Avg('amount'))['amount__avg'] or 0)
-        days_in_period = max((now.date() - start_date.date()).days, 1)
+        days_in_period = max((end_date - start_date).days + 1, 1)
         daily_average = total_amount / days_in_period
 
         summary_data = {
@@ -160,37 +182,7 @@ class AdvancedExpenseAnalytics:
             'category_diversity_score': len(insights)
         }
 
-    def _get_budget_performance(self, expenses, period):
-        """Analyze budget performance and adherence"""
-        budget_performance = []
 
-        for budget in self.budgets.filter(is_active=True):
-            category_expenses = expenses.filter(category=budget.category)
-            
-            # FIX #2: Convert total_spent and budget_amount to floats for consistent math
-            total_spent = float(category_expenses.aggregate(Sum('amount'))['amount__sum'] or 0)
-            budget_amount = float(budget.amount)
-
-            utilization = (total_spent / budget_amount * 100) if budget_amount > 0 else 0
-            remaining = budget_amount - total_spent
-
-            status = 'over_budget' if utilization > 100 else 'on_track' if utilization > 80 else 'under_budget'
-
-            budget_performance.append({
-                'category': budget.category,
-                'budget_amount': budget_amount,
-                'spent_amount': total_spent,
-                'remaining_amount': remaining,
-                'utilization_percentage': round(utilization, 1),
-                'status': status,
-                'days_left': (budget.end_date - timezone.now().date()).days if budget.end_date else None
-            })
-
-        return {
-            'budget_performance': budget_performance,
-            'over_budget_count': sum(1 for b in budget_performance if b['status'] == 'over_budget'),
-            'average_utilization': round(sum(b['utilization_percentage'] for b in budget_performance) / max(len(budget_performance), 1), 1)
-        }
 
     def _get_predictive_insights(self, expenses, period):
         """Generate predictive insights based on spending patterns"""
@@ -417,17 +409,24 @@ class AdvancedExpenseAnalytics:
     def get_trends_analysis(self, months=6):
         """Get spending trends analysis for the specified number of months"""
         try:
-            end_date = timezone.now()
-            start_date = end_date - timedelta(days=months * 30)
+            today = timezone.now().date()
             
-            # Get monthly spending data
+            # Get monthly spending data for the last N months
             monthly_data = {}
-            current_date = start_date
             
-            while current_date <= end_date:
-                month_key = current_date.strftime('%Y-%m')
-                month_start = current_date.replace(day=1)
-                month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            for i in range(months):
+                # Calculate month start and end dates
+                if i == 0:
+                    # Current month
+                    month_start = today.replace(day=1)
+                    month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                else:
+                    # Previous months
+                    temp_date = today.replace(day=1) - timedelta(days=i * 30)
+                    month_start = temp_date.replace(day=1)
+                    month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                
+                month_key = month_start.strftime('%Y-%m')
                 
                 month_expenses = self.expenses.filter(
                     transaction_date__gte=month_start,
@@ -447,7 +446,7 @@ class AdvancedExpenseAnalytics:
                     )
                 }
                 
-                current_date = (month_start + timedelta(days=32)).replace(day=1)
+                # Continue to next iteration
             
             # Calculate trends
             months_list = list(monthly_data.keys())

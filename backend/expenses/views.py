@@ -468,7 +468,6 @@ class ExpenseAdvancedViewSet(viewsets.ViewSet):
         try:
             period = request.query_params.get('period', 'month')
             analytics_data = ExpenseAdvancedService.get_comprehensive_analytics(request.user, period)
-            print(f"Analytics data: {analytics_data}")
             return Response(analytics_data)
         except Exception as e:
             logger.error(f"Analytics error: {e}")
@@ -514,6 +513,68 @@ class ExpenseAdvancedViewSet(viewsets.ViewSet):
             return Response(
                 {'error': 'Expense not found'},
                 status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=False, methods=['post'], url_path='bulk_operations')
+    def bulk_operations(self, request):
+        """Handle bulk operations on expenses"""
+        try:
+            action = request.data.get('action') or request.data.get('operation')
+            expense_ids = request.data.get('expense_ids', [])
+            
+            if not action or not expense_ids:
+                return Response(
+                    {'error': 'Action and expense_ids are required'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            expenses = Expense.objects.filter(expense_id__in=expense_ids, user=request.user)
+            
+            if action == 'delete':
+                count = expenses.count()
+                expenses.delete()
+                return Response(
+                    {'message': f'Successfully deleted {count} expenses'}, 
+                    status=status.HTTP_200_OK
+                )
+            
+            elif action == 'categorize':
+                new_category = request.data.get('category')
+                if not new_category:
+                    return Response(
+                        {'error': 'Category is required for categorize'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                count = expenses.update(category=new_category)
+                return Response(
+                    {'message': f'Successfully categorized {count} expenses'}, 
+                    status=status.HTTP_200_OK
+                )
+            
+            elif action == 'duplicate':
+                duplicated_count = 0
+                for expense in expenses:
+                    expense.pk = None
+                    expense.expense_id = None
+                    expense.save()
+                    duplicated_count += 1
+                return Response(
+                    {'message': f'Successfully duplicated {duplicated_count} expenses'}, 
+                    status=status.HTTP_200_OK
+                )
+            
+            else:
+                return Response(
+                    {'error': f'Invalid action: {action}'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except Exception as e:
+            logger.error(f"Bulk operations error: {e}")
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
     @action(detail=False, methods=['get'])

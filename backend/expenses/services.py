@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from .models import Expense, ExpenseCategory, ExpenseTag
 from budgets.models import Budget
+from .advanced_analytics import AdvancedExpenseAnalytics
 
 logger = logging.getLogger(__name__)
 
@@ -115,20 +116,41 @@ class ExpenseService:
         Returns:
             Dictionary containing analytics data
         """
-        # Calculate date range
-        end_date = timezone.now().date()
+        # Calculate date range based on current period
+        today = timezone.now().date()
+        
         if period == 'week':
-            start_date = end_date - timedelta(days=7)
+            # Current week (Monday to Sunday)
+            start_date = today - timedelta(days=today.weekday())
+            end_date = start_date + timedelta(days=6)
         elif period == 'month':
-            start_date = end_date - timedelta(days=30)
+            # Current month only
+            start_date = today.replace(day=1)
+            next_month = (start_date + timedelta(days=32)).replace(day=1)
+            end_date = next_month - timedelta(days=1)
+        elif period == 'quarter':
+            # Current quarter only
+            quarter = (today.month - 1) // 3 + 1
+            start_date = today.replace(month=(quarter - 1) * 3 + 1, day=1)
+            end_month = quarter * 3
+            if end_month > 12:
+                end_date = today.replace(year=today.year + 1, month=end_month - 12, day=1) - timedelta(days=1)
+            else:
+                end_date = (today.replace(month=end_month, day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
         elif period == 'year':
-            start_date = end_date - timedelta(days=365)
+            # Current year only
+            start_date = today.replace(month=1, day=1)
+            end_date = today.replace(month=12, day=31)
         else:
-            start_date = end_date - timedelta(days=30)  # Default to month
+            # Default to current month
+            start_date = today.replace(day=1)
+            next_month = (start_date + timedelta(days=32)).replace(day=1)
+            end_date = next_month - timedelta(days=1)
         
         expenses = Expense.objects.filter(
             user=user,
-            transaction_date__range=[start_date, end_date]
+            transaction_date__gte=start_date,
+            transaction_date__lte=end_date
         )
         
         # Summary statistics
@@ -221,17 +243,24 @@ class ExpenseService:
         """Get expense summary data"""
         today = timezone.now().date()
         start_of_week = today - timedelta(days=today.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+        start_of_month = today.replace(day=1)
+        end_of_month = (start_of_month + timedelta(days=32)).replace(day=1) - timedelta(days=1)
         
         today_sum = Expense.objects.filter(
             user=user, transaction_date=today
         ).aggregate(total=Sum('amount'))['total'] or 0
         
         week_sum = Expense.objects.filter(
-            user=user, transaction_date__gte=start_of_week
+            user=user, 
+            transaction_date__gte=start_of_week,
+            transaction_date__lte=end_of_week
         ).aggregate(total=Sum('amount'))['total'] or 0
         
         month_sum = Expense.objects.filter(
-            user=user, transaction_date__year=today.year, transaction_date__month=today.month
+            user=user, 
+            transaction_date__gte=start_of_month,
+            transaction_date__lte=end_of_month
         ).aggregate(total=Sum('amount'))['total'] or 0
         
         current_budget_amount = 0
@@ -243,18 +272,24 @@ class ExpenseService:
         except (Budget.DoesNotExist, Budget.MultipleObjectsReturned):
             pass
         
-        expenses = Expense.objects.filter(user=user)
+        # Get current month expenses for totals
+        current_month_expenses = Expense.objects.filter(
+            user=user,
+            transaction_date__gte=start_of_month,
+            transaction_date__lte=end_of_month
+        )
+        
         return {
             'today': float(today_sum),
             'week': float(week_sum),
             'month': float(month_sum),
             'current_budget': float(current_budget_amount),
-            'total_expenses': expenses.count(),
-            'total_amount': sum(float(expense.amount) for expense in expenses),
-            'categories': list(expenses.values_list('category', flat=True).distinct()),
+            'total_expenses': current_month_expenses.count(),
+            'total_amount': float(current_month_expenses.aggregate(total=Sum('amount'))['total'] or 0),
+            'categories': list(current_month_expenses.values_list('category', flat=True).distinct()),
             'date_range': {
-                'earliest': expenses.order_by('transaction_date').first().transaction_date if expenses.exists() else None,
-                'latest': expenses.order_by('-transaction_date').first().transaction_date if expenses.exists() else None
+                'start': start_of_month,
+                'end': end_of_month
             }
         }
 
@@ -337,15 +372,39 @@ class ExpenseAdvancedService:
     def get_comprehensive_analytics(user: User, period: str = 'month') -> Dict:
         """Get comprehensive expense analytics"""
         today = timezone.now().date()
-        if period == 'month':
-            start_date = today - timedelta(days=30)
+        
+        if period == 'week':
+            # Current week (Monday to Sunday)
+            start_date = today - timedelta(days=today.weekday())
+            end_date = start_date + timedelta(days=6)
+        elif period == 'month':
+            # Current month only
+            start_date = today.replace(day=1)
+            next_month = (start_date + timedelta(days=32)).replace(day=1)
+            end_date = next_month - timedelta(days=1)
         elif period == 'quarter':
-            start_date = today - timedelta(days=90)
+            # Current quarter only
+            quarter = (today.month - 1) // 3 + 1
+            start_date = today.replace(month=(quarter - 1) * 3 + 1, day=1)
+            end_month = quarter * 3
+            if end_month > 12:
+                end_date = today.replace(year=today.year + 1, month=end_month - 12, day=1) - timedelta(days=1)
+            else:
+                end_date = (today.replace(month=end_month, day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        elif period == 'year':
+            # Current year only
+            start_date = today.replace(month=1, day=1)
+            end_date = today.replace(month=12, day=31)
         else:
-            start_date = today - timedelta(days=365)
+            # Default to current month
+            start_date = today.replace(day=1)
+            next_month = (start_date + timedelta(days=32)).replace(day=1)
+            end_date = next_month - timedelta(days=1)
         
         expenses = Expense.objects.filter(
-            user=user, transaction_date__gte=start_date, transaction_date__lte=today
+            user=user, 
+            transaction_date__gte=start_date, 
+            transaction_date__lte=end_date
         )
         
         total_amount = expenses.aggregate(Sum('amount'))['amount__sum'] or 0
