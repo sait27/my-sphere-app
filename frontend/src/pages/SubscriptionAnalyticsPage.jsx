@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import SubscriptionAIInsights from '../components/subscriptions/SubscriptionAIInsights';
 import { TrendingUp, DollarSign, Calendar, PieChart } from 'lucide-react';
 import apiClient from '../api/axiosConfig';

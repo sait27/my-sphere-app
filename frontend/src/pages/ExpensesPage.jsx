@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, Plus, Download, Upload, Edit3, Trash2, Calendar, DollarSign, Tag, BarChart3, PieChart, TrendingUp, Wallet, MapPin, ShoppingBag, Coffee, Car, Gamepad2, Zap, Heart, GraduationCap, MoreHorizontal } from 'lucide-react';
+import { Search, Filter, Plus, Download, Upload, Edit3, Trash2, Calendar, DollarSign, Tag, BarChart3, PieChart, TrendingUp, Wallet, MapPin, ShoppingBag, Coffee, Car, Gamepad2, Zap, Heart, GraduationCap, MoreHorizontal, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import toast from 'react-hot-toast';
-import apiClient from '../api/axiosConfig';
+import { expenseAPI } from '../api/expenses';
 import ExpenseFilters from '../components/expenses/ExpenseFilters';
 import ExpenseBulkActions from '../components/expenses/ExpenseBulkActions';
 import ExpenseAnalytics from '../components/expenses/ExpenseAnalytics';
@@ -30,10 +30,12 @@ function ExpensesPage() {
   const [viewMode, setViewMode] = useState('list'); // 'list', 'chart', 'analytics'
   const [selectedExpenses, setSelectedExpenses] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const fetchExpenses = async () => {
     try {
-      const response = await apiClient.get('/expenses/');
+      const response = await expenseAPI.getExpenses();
       setExpenses(response.data);
     } catch (error) {
       // Failed to fetch expenses
@@ -49,7 +51,7 @@ function ExpensesPage() {
     if (!expenseText.trim()) return;
     setIsSubmitting(true);
     try {
-      await apiClient.post('/expenses/', { text: expenseText });
+      await expenseAPI.createExpense(expenseText);
       toast.success("Expense added successfully!");
       setExpenseText('');
       fetchExpenses();
@@ -70,7 +72,7 @@ function ExpensesPage() {
 const confirmDelete = async () => {
   // This function runs when the user clicks "Confirm" in the modal
   try {
-    await apiClient.delete(`/expenses/${deletingExpenseId}/`);
+    await expenseAPI.deleteExpense(deletingExpenseId);
     toast.success("Expense deleted.");
     fetchExpenses(); // Refresh the list
   } catch (error) {
@@ -83,7 +85,7 @@ const confirmDelete = async () => {
 };
 
   const handleUpdateExpense = async (updatedExpenseData) => {
-    await apiClient.put(`/expenses/${updatedExpenseData.expense_id}/`, updatedExpenseData);
+    await expenseAPI.updateExpense(updatedExpenseData.expense_id, updatedExpenseData);
     fetchExpenses();
   };
 
@@ -166,6 +168,17 @@ const confirmDelete = async () => {
   const totalAmount = useMemo(() => {
     return filteredAndSortedExpenses.reduce((total, expense) => total + parseFloat(expense.amount), 0);
   }, [filteredAndSortedExpenses]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredAndSortedExpenses.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedExpenses = filteredAndSortedExpenses.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterCategory, dateRange, paymentMethod, expenseType, amountRange]);
 
   const categories = useMemo(() => {
     const uniqueCategories = [...new Set(expenses.map(expense => expense.category))];
@@ -432,26 +445,29 @@ const confirmDelete = async () => {
                   <button
                     type="button"
                     onClick={() => setExpenseText('paid 100 for groceries')}
-                    className="px-3 py-1 text-xs bg-green-500/20 text-green-300 rounded-lg hover:bg-green-500/30 transition-colors"
+                    className="px-3 py-1 text-xs bg-green-500/20 text-green-300 rounded-lg hover:bg-green-500/30 transition-colors flex items-center gap-1"
                     title="Quick: Groceries"
                   >
-                    
+                    <ShoppingBag size={12} />
+                    ₹100
                   </button>
                   <button
                     type="button"
                     onClick={() => setExpenseText('paid 200 for dinner')}
-                    className="px-3 py-1 text-xs bg-orange-500/20 text-orange-300 rounded-lg hover:bg-orange-500/30 transition-colors"
+                    className="px-3 py-1 text-xs bg-orange-500/20 text-orange-300 rounded-lg hover:bg-orange-500/30 transition-colors flex items-center gap-1"
                     title="Quick: Dining"
                   >
-                    
+                    <Coffee size={12} />
+                    ₹200
                   </button>
                   <button
                     type="button"
                     onClick={() => setExpenseText('paid 50 for fuel')}
-                    className="px-3 py-1 text-xs bg-purple-500/20 text-purple-300 rounded-lg hover:bg-purple-500/30 transition-colors"
+                    className="px-3 py-1 text-xs bg-purple-500/20 text-purple-300 rounded-lg hover:bg-purple-500/30 transition-colors flex items-center gap-1"
                     title="Quick: Travel"
                   >
-                    
+                    <Car size={12} />
+                    ₹50
                   </button>
                 </div>
                 
@@ -578,7 +594,7 @@ const confirmDelete = async () => {
                       className="w-4 h-4 text-cyan-600 bg-slate-700 border-slate-600 rounded focus:ring-cyan-500 focus:ring-2"
                     />
                     <span className="text-slate-300 text-sm font-medium">
-                      Select All ({filteredAndSortedExpenses.length})
+                      Select All ({paginatedExpenses.length})
                     </span>
                   </div>
                   <span className="text-slate-400 text-sm">
@@ -587,7 +603,7 @@ const confirmDelete = async () => {
                 </div>
 
                 <div className="grid gap-4 sm:gap-3 md:grid-cols-1 lg:grid-cols-1">
-                  {filteredAndSortedExpenses.map((expense, index) => (
+                  {paginatedExpenses.map((expense, index) => (
                     <div
                       key={expense.expense_id}
                       className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 hover:shadow-2xl hover:shadow-cyan-500/10 animate-slideInUp ${
@@ -691,6 +707,98 @@ const confirmDelete = async () => {
                     </div>
                   ))}
                 </div>
+
+                {/* Enhanced Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="bg-gradient-to-r from-slate-800/50 to-slate-700/50 backdrop-blur-sm rounded-2xl p-6 mt-6 border border-slate-600/30">
+                    <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 bg-slate-700/50 rounded-xl px-4 py-2 border border-slate-600/30">
+                          <span className="text-slate-300 text-sm font-medium">Show:</span>
+                          <select
+                            value={itemsPerPage}
+                            onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                            className="bg-transparent border-none text-cyan-400 text-sm font-semibold focus:outline-none cursor-pointer"
+                          >
+                            <option value={5} className="bg-slate-800">5</option>
+                            <option value={10} className="bg-slate-800">10</option>
+                            <option value={20} className="bg-slate-800">20</option>
+                            <option value={50} className="bg-slate-800">50</option>
+                          </select>
+                        </div>
+                        <div className="text-slate-400 text-sm bg-slate-700/30 rounded-xl px-4 py-2 border border-slate-600/20">
+                          <span className="text-white font-semibold">{startIndex + 1}-{Math.min(endIndex, filteredAndSortedExpenses.length)}</span> of <span className="text-cyan-400 font-semibold">{filteredAndSortedExpenses.length}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setCurrentPage(1)}
+                          disabled={currentPage === 1}
+                          className="p-3 text-slate-400 hover:text-white hover:bg-gradient-to-r hover:from-cyan-500/20 hover:to-blue-500/20 rounded-xl transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 border border-slate-600/30 hover:border-cyan-500/50"
+                          title="First page"
+                        >
+                          <ChevronsLeft size={18} />
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                          className="p-3 text-slate-400 hover:text-white hover:bg-gradient-to-r hover:from-cyan-500/20 hover:to-blue-500/20 rounded-xl transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 border border-slate-600/30 hover:border-cyan-500/50"
+                          title="Previous page"
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+                        
+                        {/* Enhanced Page Numbers */}
+                        <div className="flex items-center gap-1 mx-3 bg-slate-700/30 rounded-xl p-1 border border-slate-600/30">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let pageNum;
+                            if (totalPages <= 5) {
+                              pageNum = i + 1;
+                            } else if (currentPage <= 3) {
+                              pageNum = i + 1;
+                            } else if (currentPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i;
+                            } else {
+                              pageNum = currentPage - 2 + i;
+                            }
+                            
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => setCurrentPage(pageNum)}
+                                className={`min-w-[40px] h-10 text-sm font-semibold rounded-lg transition-all duration-300 hover:scale-105 ${
+                                  currentPage === pageNum
+                                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30 border border-cyan-400/50'
+                                    : 'text-slate-300 hover:text-white hover:bg-slate-600/50 border border-transparent hover:border-slate-500/50'
+                                }`}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          disabled={currentPage === totalPages}
+                          className="p-3 text-slate-400 hover:text-white hover:bg-gradient-to-r hover:from-cyan-500/20 hover:to-blue-500/20 rounded-xl transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 border border-slate-600/30 hover:border-cyan-500/50"
+                          title="Next page"
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(totalPages)}
+                          disabled={currentPage === totalPages}
+                          className="p-3 text-slate-400 hover:text-white hover:bg-gradient-to-r hover:from-cyan-500/20 hover:to-blue-500/20 rounded-xl transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 border border-slate-600/30 hover:border-cyan-500/50"
+                          title="Last page"
+                        >
+                          <ChevronsRight size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <EmptyState

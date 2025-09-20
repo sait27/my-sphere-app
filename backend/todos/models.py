@@ -92,6 +92,7 @@ class Task(models.Model):
     # Integration with other modules
     related_expense_id = models.IntegerField(null=True, blank=True)  # Link to expense
     related_list_id = models.IntegerField(null=True, blank=True)  # Link to checklist
+    calendar_event_id = models.CharField(max_length=255, null=True, blank=True)  # Google Calendar event ID
     
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)

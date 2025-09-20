@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Brain, RefreshCw, Sparkles, TrendingUp, Target, Lightbulb, DollarSign } from 'lucide-react';
-import apiClient from '../../api/axiosConfig';
+import { expenseAPI } from '../../api/expenses';
 import toast from 'react-hot-toast';
 
 const ExpenseAIInsights = () => {
@@ -17,8 +17,7 @@ const ExpenseAIInsights = () => {
     }
 
     try {
-      const url = forceRefresh ? '/expenses/ai-insights/?refresh=true' : '/expenses/ai-insights/';
-      const response = await apiClient.get(url);
+      const response = await expenseAPI.getAIInsights(forceRefresh);
       setInsightsData(response.data);
       if(forceRefresh) toast.success('Insights have been refreshed!');
     } catch (err) {

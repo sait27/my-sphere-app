@@ -5,7 +5,8 @@ import ExpensesPage from './pages/ExpensesPage';
 import ListifyPage from './pages/ListifyPage';
 import DashboardPage from './pages/DashboardPage';
 import SettingsPage from './pages/SettingsPage';
-import AdvancedTodosPage from './pages/AdvancedTodosPage';
+import TodosPage from './pages/TodosPage';
+
 import SubscriptionsPage from './pages/SubscriptionsPage';
 import SubscriptionAnalyticsPage from './pages/SubscriptionAnalyticsPage';
 import LoginPage from './pages/LoginPage';
@@ -47,7 +48,7 @@ function App() {
         <Route path="subscriptions" element={<SubscriptionsPage />} />
         <Route path="subscriptions/analytics" element={<SubscriptionAnalyticsPage />} />
         <Route path="lists" element={<ListifyPage />} />
-        <Route path="todos" element={<AdvancedTodosPage />} />
+        <Route path="todos" element={<TodosPage />} />
         <Route path="settings" element={<SettingsPage />} />
         {/* We can add more protected routes here later */}
       </Route>

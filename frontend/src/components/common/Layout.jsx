@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import apiClient from '../../api/axiosConfig';
-import { LayoutDashboard, Wallet, ListChecks, Settings, LogOut, Menu, X, Globe, Brain, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Wallet, ListChecks, Settings, LogOut, Menu, X, Globe, CreditCard, CheckSquare } from 'lucide-react';
 
 function Layout() {
   const navigate = useNavigate();
@@ -23,8 +23,9 @@ function Layout() {
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard Hub' },
     { path: '/expenses', icon: Wallet, label: 'Expenses' },
     { path: '/subscriptions', icon: CreditCard, label: 'Subscriptions' },
-    { path: '/todos', icon: Brain, label: 'AI Tasks & Goals' },
+
     { path: '/lists', icon: ListChecks, label: 'Lists' },
+    { path: '/todos', icon: CheckSquare, label: 'Tasks & Goals' },
     { path: '/settings', icon: Settings, label: 'Settings' }
   ];
 

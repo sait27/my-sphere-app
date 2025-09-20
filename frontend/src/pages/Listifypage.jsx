@@ -15,7 +15,7 @@ import { useListTemplates } from '../hooks/useListTemplates';
 import { useAIFeatures } from '../hooks/useAIFeatures';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ListCard from '../components/lists/ListCard';
-import ListItemsModal from '../components/lists/ListItemsModal';
+import ListItemsModal from '../components/modals/ListItemsModal';
 import ListAnalyticsView from '../components/lists/ListAnalyticsView';
 import ListTemplatesView from '../components/lists/ListTemplatesView';
 import AIInsightsView from '../components/lists/AIInsightsView';

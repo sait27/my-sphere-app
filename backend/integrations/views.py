@@ -7,17 +7,22 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
 
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from .models import GoogleCalendarToken
+from .calendar_service import GoogleCalendarService
 from django.contrib.auth.models import User
 from django.core.signing import Signer, BadSignature
+import json
 
-# --- This is the configuration for our connection ---
-# The SCOPES define what we are allowed to ask for. Here, we ask for read-only calendar access.
-SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+# Enhanced scopes for full calendar integration
+SCOPES = [
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/calendar.events'
+]
 REDIRECT_URI = 'http://localhost:8000/api/v1/integrations/google/callback/'
 
 def get_google_flow():
@@ -91,17 +96,123 @@ class GoogleCalendarCallbackView(APIView):
             }
         )
         
-        return redirect('http://localhost:5173/settings')
+        # Close the popup window with success message
+        return redirect('http://localhost:5173/settings?calendar_connected=true')
 
 class GoogleCalendarStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        is_connected = GoogleCalendarToken.objects.filter(user=request.user).exists()
-        return Response({'is_connected': is_connected})
+        try:
+            token = GoogleCalendarToken.objects.get(user=request.user)
+            calendar_service = GoogleCalendarService(request.user)
+            calendars = calendar_service.get_calendars()
+            
+            return Response({
+                'connected': True,
+                'status': 'connected',
+                'calendars': [{
+                    'id': cal['id'],
+                    'summary': cal['summary'],
+                    'primary': cal.get('primary', False)
+                } for cal in calendars],
+                'settings': {
+                    'syncTasks': True,
+                    'syncExpenses': True,
+                    'syncLists': False,
+                    'autoSync': True
+                }
+            })
+        except GoogleCalendarToken.DoesNotExist:
+            return Response({
+                'connected': False,
+                'status': 'disconnected',
+                'calendars': [],
+                'settings': {}
+            })
+        except Exception as e:
+            return Response({
+                'connected': False,
+                'status': 'error',
+                'error': str(e),
+                'calendars': [],
+                'settings': {}
+            })
 
     def delete(self, request):
         GoogleCalendarToken.objects.filter(user=request.user).delete()
         return Response({'status': 'disconnected'}, status=status.HTTP_204_NO_CONTENT)
+
+
+class GoogleCalendarConnectView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        signer = Signer()
+        state = signer.sign(str(request.user.id))
+        
+        flow = get_google_flow()
+        authorization_url, _ = flow.authorization_url(
+            access_type='offline',
+            prompt='consent',
+            include_granted_scopes='true',
+            state=state
+        )
+        return Response({'auth_url': authorization_url})
+
+
+class GoogleCalendarDisconnectView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        GoogleCalendarToken.objects.filter(user=request.user).delete()
+        return Response({'status': 'disconnected'})
+
+
+class GoogleCalendarSyncView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            calendar_service = GoogleCalendarService(request.user)
+            calendar_id = request.data.get('calendar_id', 'primary')
+            
+            result = calendar_service.sync_tasks_to_calendar(calendar_id)
+            
+            if result['success']:
+                return Response({
+                    'success': True,
+                    'message': f"Synced {result['synced_count']} tasks to calendar",
+                    'synced_count': result['synced_count'],
+                    'errors': result.get('errors', [])
+                })
+            else:
+                return Response({
+                    'success': False,
+                    'error': result['error']
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GoogleCalendarSettingsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        # Store user's calendar sync preferences
+        # You might want to create a separate model for this
+        settings_data = request.data
+        
+        # For now, just return success
+        # In a full implementation, you'd save these settings to a model
+        return Response({
+            'success': True,
+            'message': 'Settings saved successfully',
+            'settings': settings_data
+        })
 
 

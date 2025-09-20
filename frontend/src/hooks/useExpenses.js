@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import apiClient from '../api/axiosConfig';
+import { expenseAPI } from '../api/expenses';
 
 export const useExpenses = () => {
   const [expenses, setExpenses] = useState([]);
@@ -26,7 +26,7 @@ export const useExpenses = () => {
         }
       });
       
-      const response = await apiClient.get(`/expenses/?${params.toString()}`);
+      const response = await expenseAPI.getExpenses(filters);
       setExpenses(response.data.results || response.data);
       
     } catch (err) {
@@ -46,7 +46,7 @@ export const useExpenses = () => {
     }
 
     try {
-      const response = await apiClient.post('/expenses/', { text: text.trim() });
+      const response = await expenseAPI.createExpense(text.trim());
       
       if (response.data.expenses) {
         setExpenses(prev => [...response.data.expenses, ...prev]);
@@ -64,7 +64,7 @@ export const useExpenses = () => {
   // Update expense
   const updateExpense = useCallback(async (expenseId, data) => {
     try {
-      const response = await apiClient.put(`/expenses/${expenseId}/`, data);
+      const response = await expenseAPI.updateExpense(expenseId, data);
       
       setExpenses(prev => 
         prev.map(expense => 
@@ -85,7 +85,7 @@ export const useExpenses = () => {
   // Delete expense
   const deleteExpense = useCallback(async (expenseId) => {
     try {
-      await apiClient.delete(`/expenses/${expenseId}/`);
+      await expenseAPI.deleteExpense(expenseId);
       
       setExpenses(prev => prev.filter(expense => expense.expense_id !== expenseId));
       setSelectedExpenses(prev => prev.filter(id => id !== expenseId));
@@ -108,11 +108,7 @@ export const useExpenses = () => {
     }
 
     try {
-      const response = await apiClient.post('/expenses/advanced/bulk_operations/', {
-        expense_ids: selectedExpenses,
-        operation,
-        ...params
-      });
+      const response = await expenseAPI.bulkOperation(operation, selectedExpenses, params);
 
       // Refresh expenses after bulk operation
       await fetchExpenses();
@@ -136,12 +132,7 @@ export const useExpenses = () => {
     }
 
     try {
-      const response = await apiClient.post('/expenses/advanced/export/', {
-        expense_ids: selectedExpenses,
-        format
-      }, {
-        responseType: 'blob'
-      });
+      const response = await expenseAPI.exportExpenses(selectedExpenses, format);
 
       // Create download link
       const blob = new Blob([response.data], { type: 'text/csv' });

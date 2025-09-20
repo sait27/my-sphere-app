@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Check, Trash2, Tag, Copy, Archive, Download, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
-import apiClient from '../../api/axiosConfig';
+import { expenseAPI } from '../../api/expenses';
 
 const ExpenseBulkActions = ({ selectedExpenses, onActionComplete, categories }) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -16,11 +16,7 @@ const ExpenseBulkActions = ({ selectedExpenses, onActionComplete, categories }) 
 
     setIsProcessing(true);
     try {
-      await apiClient.post('/expenses/advanced/bulk_operations/', {
-        expense_ids: selectedExpenses,
-        operation: action,
-        ...params
-      });
+      await expenseAPI.bulkOperation(action, selectedExpenses, params);
 
       toast.success(`${action} completed for ${selectedExpenses.length} expenses`);
       onActionComplete();
@@ -57,12 +53,7 @@ const ExpenseBulkActions = ({ selectedExpenses, onActionComplete, categories }) 
       setIsProcessing(true);
       console.log('🔍 Exporting expenses:', selectedExpenses);
       
-      const response = await apiClient.post('/expenses/advanced/export/', {
-        expense_ids: selectedExpenses,
-        format: 'csv'
-      }, {
-        responseType: 'blob'
-      });
+      const response = await expenseAPI.exportExpenses(selectedExpenses, 'csv');
 
       console.log('🔍 Export response:', response);
       console.log('🔍 Response data type:', typeof response.data);
